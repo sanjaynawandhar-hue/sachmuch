@@ -4,6 +4,7 @@ import { clayShadow, clayNative } from '../src/tokens/clay';
 import { contrastRatio, WCAG_AA_NORMAL, WCAG_AA_LARGE } from '../src/tokens/contrast';
 import { categoryTint } from '../src/tokens/tint';
 import { typeStyle } from '../src/tokens/type';
+import { AMBIENT_MODES, AMBIENT_VOICES, startAmbient } from '../src/web/ambient';
 
 const SCHEMES = ['light', 'dark'] as const;
 
@@ -121,5 +122,26 @@ describe('web / native parity', () => {
       expect(clayNative({ scheme, state: 'pressed' }).backgroundColor).toBe(palette[scheme].sunken);
       expect(clayNative({ scheme, state: 'raised' }).backgroundColor).toBe(palette[scheme].surface);
     }
+  });
+});
+
+/**
+ * The music is generated, so there is no audio file to listen to in review.
+ * These assert the properties that make a randomised sequence listenable at all.
+ */
+describe('ambient music', () => {
+  it('offers several instruments, so a session does not always sound the same', () => {
+    expect(AMBIENT_VOICES.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(AMBIENT_VOICES).size).toBe(AMBIENT_VOICES.length);
+  });
+
+  it('offers several modes, all named after the raga they derive from', () => {
+    expect(AMBIENT_MODES.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(AMBIENT_MODES).size).toBe(AMBIENT_MODES.length);
+  });
+
+  it('returns null rather than throwing where Web Audio is unavailable', () => {
+    // Node has no window, which is the same branch a very old browser takes.
+    expect(startAmbient()).toBeNull();
   });
 });

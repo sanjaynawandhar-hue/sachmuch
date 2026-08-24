@@ -25,6 +25,33 @@ export interface FeedProps {
 /** Past this fraction of the axis, or this flick speed, the card advances. */
 const DISTANCE_RATIO = 0.2;
 const VELOCITY_PX_PER_MS = 0.4;
+
+/**
+ * How far past the ends the feed will stretch before refusing.
+ *
+ * A card that simply stops dead under the finger feels broken; one that keeps
+ * following feels like the list has no end. Rubber-banding — movement that
+ * decays the further you pull — is what tells a thumb it has reached a limit
+ * without the motion stopping.
+ */
+function rubberBand(distance: number, dimension: number): number {
+  const c = 0.55;
+  return (distance * dimension * c) / (dimension + c * Math.abs(distance));
+}
+
+/**
+ * Duration for the settling animation.
+ *
+ * A fixed duration is what makes a swipe feel wrong: a hard flick that has
+ * already travelled most of the width still waits the full time, so the card
+ * appears to hesitate before catching up. Deriving it from the distance left to
+ * travel and the speed the finger was moving keeps the motion continuous with
+ * the gesture that started it.
+ */
+function settleMs(remainingPx: number, velocityPxPerMs: number): number {
+  const speed = Math.max(velocityPxPerMs, 0.35);
+  return Math.round(Math.min(420, Math.max(160, Math.abs(remainingPx) / speed)));
+}
 /** Rebuild the queue when this few cards remain, so it never runs out. */
 const REFILL_AT = 4;
 
@@ -54,7 +81,11 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
   likedRef.current = liked;
   savedRef.current = saved;
 
-  const pointer = useRef<{ x: number; y: number; t: number; axis: 'x' | 'y' | null } | null>(null);
+  const pointer = useRef<
+    { x: number; y: number; t: number; axis: 'x' | 'y' | null; lastX: number; lastY: number; lastT: number } | null
+  >(null);
+  /** Set at release so the settle animation matches the speed of the flick. */
+  const settle = useRef(220);
   const box = useRef<HTMLDivElement>(null);
   /** When the current card came into view, and what has happened to it since. */
   const shown = useRef<{ at: number; expanded: boolean }>({ at: Date.now(), expanded: false });
@@ -92,20 +123,41 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
   const current = queue[pos];
 
   /**
-   * Music is started only on an explicit request, never on load. Browsers block
-   * audio before a user gesture anyway, but the stronger reason is that most
-   * people scroll a feed in silence, often somewhere sound would be unwelcome.
-   * Off by default is the correct default, not a limitation.
+   * Music starts on the reader's FIRST INTERACTION, not on load.
+   *
+   * This is not a design preference, it is how browsers work: an AudioContext
+   * created without a user gesture is handed back suspended, and a suspended
+   * context fails silently — the toggle would read "on" and nothing would play.
+   * So when music is enabled the engine waits, armed, for the first tap or
+   * swipe, and starts then. To the reader it is on from the moment they touch
+   * the feed, which is the first moment it could ever have been.
    */
   useEffect(() => {
-    if (music && !ambient.current) {
-      ambient.current = startAmbient(current?.categoryId ?? 0);
-    } else if (!music && ambient.current) {
-      ambient.current.stop();
+    if (!music) {
+      ambient.current?.stop();
       ambient.current = null;
+      return;
     }
-    return () => { ambient.current?.stop(); ambient.current = null; };
+    if (ambient.current) return;
+
+    const begin = () => {
+      if (ambient.current) return;
+      ambient.current = startAmbient({ categoryId: current?.categoryId ?? 0 });
+    };
+    // Try immediately: on a repeat visit the page may already carry a gesture.
+    begin();
+    if (ambient.current) return;
+
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'touchstart'];
+    const once = () => {
+      begin();
+      for (const e of events) window.removeEventListener(e, once);
+    };
+    for (const e of events) window.addEventListener(e, once, { once: true, passive: true });
+    return () => { for (const e of events) window.removeEventListener(e, once); };
   }, [music]);
+
+  useEffect(() => () => { ambient.current?.stop(); ambient.current = null; }, []);
 
   // The key follows the subject, gliding rather than jumping between cards.
   useEffect(() => {
@@ -166,7 +218,11 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
   }, [commitAndAdvance]);
 
   function onPointerDown(e: React.PointerEvent) {
-    pointer.current = { x: e.clientX, y: e.clientY, t: performance.now(), axis: null };
+    const now = performance.now();
+    pointer.current = {
+      x: e.clientX, y: e.clientY, t: now, axis: null,
+      lastX: e.clientX, lastY: e.clientY, lastT: now,
+    };
     // Capture on the container, not e.target: the card under the finger is
     // swapped out as the feed advances, and a capture held by an unmounted node
     // is lost mid-gesture. Guarded because it throws if the pointer is gone.
@@ -181,7 +237,19 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
     const axis = p.axis ?? (Math.abs(dx) > 8 || Math.abs(dy) > 8
       ? (Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y') : null);
     p.axis = axis;
-    setDrag({ x: axis === 'x' ? dx : 0, y: axis === 'y' ? dy : 0, axis });
+
+    // Keep the most recent sample: velocity measured over the whole gesture
+    // reads a slow drag that ends in a flick as slow, which is the opposite of
+    // what the hand just did.
+    p.lastX = e.clientX; p.lastY = e.clientY; p.lastT = performance.now();
+
+    const rect = box.current?.getBoundingClientRect();
+    const atStart = posRef.current === 0;
+    let ox = axis === 'x' ? dx : 0;
+    const oy = axis === 'y' ? dy : 0;
+    // Nothing sits before the first card, so dragging back from it resists.
+    if (atStart && ox > 0 && rect) ox = rubberBand(ox / rect.width, rect.width);
+    setDrag({ x: ox, y: oy, axis });
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -196,19 +264,29 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
 
     const d = axis === 'x' ? e.clientX - p.x : e.clientY - p.y;
     const span = axis === 'x' ? rect.width : rect.height;
-    const v = Math.abs(d) / Math.max(1, performance.now() - p.t);
-    if (Math.abs(d) > span * DISTANCE_RATIO || v > VELOCITY_PX_PER_MS) {
-      commitAndAdvance(d < 0 ? 1 : -1);
-    }
+
+    // Velocity from the last few milliseconds of the gesture, not its average.
+    const recent = Math.max(1, performance.now() - p.lastT + 8);
+    const recentDelta = axis === 'x' ? e.clientX - p.lastX : e.clientY - p.lastY;
+    const overall = Math.abs(d) / Math.max(1, performance.now() - p.t);
+    const v = Math.max(Math.abs(recentDelta) / recent, overall);
+
+    const advancing = Math.abs(d) > span * DISTANCE_RATIO || v > VELOCITY_PX_PER_MS;
+    // Travel left to cover: to the edge if advancing, back to rest if not.
+    settle.current = settleMs(advancing ? span - Math.abs(d) : Math.abs(d), v);
+    if (advancing) commitAndAdvance(d < 0 ? 1 : -1);
   }
 
   if (!current) {
     return <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--clay-ink-soft)' }} />;
   }
 
+  // While a finger is down the card tracks it exactly; on release it settles
+  // over a duration derived from how fast the finger was moving.
   const transition = drag.axis !== null || reduceMotion
     ? 'none'
-    : 'transform 220ms var(--ease-swipe), opacity 220ms var(--ease-swipe)';
+    : `transform ${settle.current}ms cubic-bezier(0.17, 0.84, 0.34, 1),` +
+      ` opacity ${settle.current}ms ease-out`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', height: '100%', minHeight: 0 }}>
@@ -232,9 +310,11 @@ export function Feed({ facts, lang, onEntityPress, music = false, storageKey = '
               aria-hidden={offset !== 0}
               style={{
                 position: 'absolute', inset: 0,
-                transform: `translate3d(calc(${offset * 100}% + ${drag.x}px), ${drag.y}px, 0)`,
+                transform:
+                  `translate3d(calc(${offset * 100}% + ${drag.x}px), ${drag.y * 0.4}px, 0)` +
+                  ` scale(${offset === 0 ? 1 - Math.min(Math.abs(drag.x) / 2600, 0.035) : 0.94})`,
                 transition,
-                opacity: offset === 0 ? 1 : 0.3,
+                opacity: offset === 0 ? 1 : 0.45,
                 pointerEvents: offset === 0 ? 'auto' : 'none',
               }}
             >

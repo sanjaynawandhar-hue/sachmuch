@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Feed, Wordmark } from '@sachmuch/ui/web';
 import type { FactCardData } from '@sachmuch/ui';
 
@@ -17,9 +17,30 @@ export interface FeedShellProps {
  * one. That is why the Hindi feed is smaller than the English one, and why it
  * is never machine-mangled.
  */
+const MUSIC_KEY = 'sachmuch.music';
+
 export function FeedShell({ facts }: FeedShellProps) {
   const [lang, setLang] = useState<'en' | 'hi'>('en');
-  const [music, setMusic] = useState(false);
+  /**
+   * Music is ON for a first-time reader and OFF for anyone who has turned it
+   * off before. The preference is what persists, not the default — so switching
+   * it off is remembered, and never having touched it is not mistaken for
+   * having declined.
+   */
+  const [music, setMusic] = useState(true);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(MUSIC_KEY);
+    if (stored !== null) setMusic(stored === 'on');
+  }, []);
+
+  const toggleMusic = () => {
+    setMusic((on) => {
+      const next = !on;
+      try { window.localStorage.setItem(MUSIC_KEY, next ? 'on' : 'off'); } catch { /* private mode */ }
+      return next;
+    });
+  };
 
   const visible = useMemo(
     () => (lang === 'en' ? facts.map((f) => f.en) : facts.flatMap((f) => (f.hi ? [f.hi] : []))),
@@ -39,7 +60,7 @@ export function FeedShell({ facts }: FeedShellProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <button
             type="button"
-            onClick={() => setMusic((m) => !m)}
+            onClick={toggleMusic}
             aria-pressed={music}
             aria-label={music ? 'Turn music off' : 'Turn music on'}
             style={{

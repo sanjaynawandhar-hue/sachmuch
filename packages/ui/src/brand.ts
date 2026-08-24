@@ -6,10 +6,21 @@
  * each call site where one of them could drift.
  */
 export const BRAND = {
-  handle: 'professorSK',
-  /** Rendered form, with the @. */
+  /** The Instagram username the profile actually lives at. */
+  handle: 'iam_sanjay_navandar',
+  /**
+   * What readers see. The display name and the username differ on Instagram —
+   * @professorSK is the brand, iam_sanjay_navandar is the account — so the label
+   * and the link are deliberately different values rather than one derived from
+   * the other.
+   */
   display: '@professorSK',
-  instagram: 'https://instagram.com/professorSK',
+  /**
+   * Canonical profile URL, without the `igsi` and `utm_source=qr` parameters a
+   * QR share appends. Those identify one share instance rather than the profile;
+   * they add nothing for a visitor and would sit in the repo forever.
+   */
+  instagram: 'https://www.instagram.com/iam_sanjay_navandar',
   /** Shown under the handle on the share card. */
   tagline: { en: 'Finance & markets, explained', hi: 'वित्त और बाज़ार, आसान भाषा में' },
 } as const;
