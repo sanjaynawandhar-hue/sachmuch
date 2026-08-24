@@ -32,10 +32,14 @@ Without it the build fails on a missing module.
 
 Add these under **Settings → Environment Variables**, for Production and Preview:
 
-| Name | Value |
-|---|---|
-| `DATABASE_URL` | the Supabase **session pooler** URI, password percent-encoded |
-| `SACHMUCH_USER_AGENT` | `SachmuchBot/0.1 (https://<your-domain>; sanjay.nawandhar@gmail.com) node-fetch` |
+| Name | Value | When |
+|---|---|---|
+| `DATABASE_URL` | the Supabase **session pooler** URI, password percent-encoded | now |
+| `ANDROID_CERT_FINGERPRINT` | SHA-256 of the APK signing certificate | after Stage 2 |
+
+That is the whole list. `SACHMUCH_USER_AGENT`, `TMDB_READ_TOKEN` and
+`DATA_GOV_IN_KEY` belong to the ingestion pipeline, which runs on GitHub Actions
+and never on Vercel — they go in the repository's Actions secrets instead.
 
 `DATABASE_URL` is needed **at build time**, not just at runtime: the feed page is
 statically generated with hourly revalidation, so the build itself reads the facts.

@@ -165,6 +165,15 @@ importers:
       '@sachmuch/core':
         specifier: workspace:*
         version: link:../core
+      react:
+        specifier: '*'
+        version: 19.2.0
+      react-native:
+        specifier: '*'
+        version: 0.87.0(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.0)
+      react-native-svg:
+        specifier: '*'
+        version: 15.15.5(react-native@0.87.0(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.0))(react@19.2.0)
     devDependencies:
       tsx:
         specifier: ^4.20.3
