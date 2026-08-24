@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM"],
+    "noEmit": true,
+    "types": ["react", "node"],
+    "moduleResolution": "Bundler",
+    "allowJs": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

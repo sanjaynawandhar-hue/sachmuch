@@ -1,0 +1,29 @@
+{
+  "name": "sachmuch",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter=./packages/** build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "web": "pnpm --filter @sachmuch/web dev",
+    "mobile": "pnpm --filter @sachmuch/mobile start",
+    "db:generate": "pnpm --filter @sachmuch/db generate",
+    "db:push": "pnpm --filter @sachmuch/db push",
+    "db:seed": "pnpm --filter @sachmuch/db seed",
+    "pipeline": "pnpm --filter @sachmuch/pipeline start",
+    "db:check": "node --env-file=.env scripts/check-db.mjs",
+    "db:url": "node scripts/db-url.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "tsx": "^4.20.3",
+    "vitest": "^3.2.4",
+    "@types/node": "^22.15.3"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Sachmuch",
+  "short_name": "Sachmuch",
+  "description": "A never-ending feed of true things, in English and Hindi.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08070C",
+  "theme_color": "#08070C",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "entertainment", "news"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

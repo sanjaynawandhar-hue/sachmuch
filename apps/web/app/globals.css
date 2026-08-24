@@ -1,0 +1,28 @@
+/* The clay recipe itself lives in @sachmuch/ui and is never hand-rolled here. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--clay-bg);
+  color: var(--clay-ink);
+  font-family: var(--font-mulish), var(--font-body-latin);
+  -webkit-font-smoothing: antialiased;
+  /* Claymorphism relies on soft gradients; banding is very visible on cheap panels. */
+  text-rendering: optimizeLegibility;
+}
+
+/* Baloo 2 wherever the token layer asks for the display family, in both scripts. */
+:lang(hi) { font-family: var(--font-noto-devanagari), var(--font-body-devanagari); }
+
+/* Web needs a visible keyboard focus ring; the clay is too soft to show one on its own. */
+:focus-visible {
+  outline: 3px solid var(--clay-flame);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+button { font-family: inherit; }
+a { color: inherit; }

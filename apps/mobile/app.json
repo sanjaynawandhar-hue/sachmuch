@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Sachmuch",
+    "slug": "sachmuch",
+    "scheme": "sachmuch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.sachmuch.app",
+      "adaptiveIcon": { "backgroundColor": "#E9E4F0" },
+      "edgeToEdgeEnabled": true
+    },
+    "ios": { "bundleIdentifier": "com.sachmuch.app", "supportsTablet": true },
+    "splash": { "backgroundColor": "#E9E4F0", "resizeMode": "contain" }
+  }
+}
