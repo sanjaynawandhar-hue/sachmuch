@@ -169,3 +169,46 @@ test("sample preview is clearly labelled and never calls a live server", async (
   expect(screen.getByText("A surprising fact")).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+test("two rapid remove presses cannot restore a saved fact", async () => {
+  let finish!: () => void;
+  let block = false;
+  const store = createAppStore({
+    getItem: async () => null,
+    setItem: async () => {
+      if (block)
+        await new Promise<void>((r) => {
+          finish = r;
+        });
+    },
+  });
+  await store.load();
+  await store.update((s) => ({
+    ...s,
+    saved: [{ fact: bilingual, savedAt: "2026-10-14T00:00:00Z" }],
+  }));
+  await render(wrapper(<SavedScreen />, store));
+  await fireEvent.press(await screen.findByText("A surprising fact"));
+  block = true;
+  const remove = screen.getByRole("button", { name: "Remove saved fact" });
+  await fireEvent.press(remove);
+  await fireEvent.press(remove);
+  block = false;
+  finish();
+  await waitFor(() =>
+    expect(screen.getByText("Keep your first discovery.")).toBeTruthy(),
+  );
+  expect((await store.load()).saved).toEqual([]);
+});
+
+test("large text has a scrollable page with reachable previous/next controls", async () => {
+  const rn = require("react-native");
+  jest
+    .spyOn(rn, "useWindowDimensions")
+    .mockReturnValue({ width: 320, height: 568, scale: 2, fontScale: 3.1 });
+  await render(wrapper(<DiscoverScreen origin="https://example.org" />));
+  await screen.findByText("A surprising fact");
+  const page = screen.getByTestId("accessible-discover-scroll");
+  expect(page.props.scrollEnabled).not.toBe(false);
+  expect(screen.getByRole("button", { name: "Next fact" })).toBeTruthy();
+});

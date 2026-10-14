@@ -15,7 +15,6 @@
     "@react-navigation/bottom-tabs": "^7.21.0",
     "@react-navigation/native": "^7.5.1",
     "@sachmuch/core": "workspace:*",
-    "@sachmuch/ui": "workspace:*",
     "expo": "~57.0.28",
     "expo-blur": "~57.0.3",
     "expo-haptics": "~57.0.3",

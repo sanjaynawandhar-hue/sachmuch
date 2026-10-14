@@ -25,6 +25,7 @@ import { Action, Heading, Notice, Surface } from "../components/Surface";
 import { FactReader } from "../components/FactReader";
 import { SourceSheet } from "../components/SourceSheet";
 import { LanguagePicker } from "../components/LanguagePicker";
+import { ReadingLayout, useExpandedReading } from "../components/ReadingLayout";
 import { Icon } from "../components/Icon";
 export function DiscoverScreen({
   origin = process.env.EXPO_PUBLIC_API_URL ?? "",
@@ -33,6 +34,7 @@ export function DiscoverScreen({
   origin?: string;
   previewFacts?: BilingualMobileFact[];
 }) {
+  const expanded = useExpandedReading();
   const feed = useFeed(origin, !previewFacts);
   const { state, toggleSaved, recordSignal } = useAppState();
   const t = useAppTheme();
@@ -148,7 +150,9 @@ export function DiscoverScreen({
     }
   }
   return (
-    <View
+    <ReadingLayout
+      expanded={expanded}
+      testID="accessible-discover-scroll"
       style={{
         flex: 1,
         backgroundColor: t.bg,
@@ -275,9 +279,13 @@ export function DiscoverScreen({
             </Text>
           </View>
           <Animated.View
-            style={{ flex: 1, transform: [{ translateY: translate }] }}
+            style={{
+              flex: expanded ? undefined : 1,
+              transform: [{ translateY: translate }],
+            }}
           >
             <FactReader
+              expanded={expanded}
               key={`${fact.id}-${lang}`}
               fact={fact}
               language={lang}
@@ -366,6 +374,6 @@ export function DiscoverScreen({
         </View>
       )}
       <SourceSheet fact={source} onClose={() => setSource(null)} />
-    </View>
+    </ReadingLayout>
   );
 }

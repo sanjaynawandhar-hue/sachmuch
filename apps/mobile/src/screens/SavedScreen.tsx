@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { FlatList, Pressable, Share, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,8 +9,12 @@ import { strings } from "../i18n";
 import { Action, Heading, Notice, Surface } from "../components/Surface";
 import { FactReader } from "../components/FactReader";
 import { SourceSheet } from "../components/SourceSheet";
+import { ReadingLayout, useExpandedReading } from "../components/ReadingLayout";
 import { Icon } from "../components/Icon";
 export function SavedScreen() {
+  const expanded = useExpandedReading();
+  const removing = useRef(false);
+  const [saving, setSaving] = useState(false);
   const { state, toggleSaved } = useAppState();
   const t = useAppTheme();
   const s = strings(state.preferences.language);
@@ -24,13 +28,18 @@ export function SavedScreen() {
   const lang = english ? "en" : state.preferences.language;
   const fact = entry?.fact[lang];
   async function remove() {
-    if (!entry) return;
+    if (!entry || removing.current) return;
+    removing.current = true;
+    setSaving(true);
     try {
       await toggleSaved(entry.fact);
       setId(null);
       setError(null);
     } catch {
       setError("save");
+    } finally {
+      removing.current = false;
+      setSaving(false);
     }
   }
   async function share() {
@@ -44,7 +53,8 @@ export function SavedScreen() {
     }
   }
   return (
-    <View
+    <ReadingLayout
+      expanded={expanded && !!entry}
       style={{
         flex: 1,
         backgroundColor: t.bg,
@@ -76,6 +86,8 @@ export function SavedScreen() {
           )}
           {fact ? (
             <FactReader
+              expanded={expanded}
+              saving={saving}
               fact={fact}
               language={lang}
               saved
@@ -99,6 +111,7 @@ export function SavedScreen() {
                   onPress={() => setEnglish(true)}
                 />
                 <Action
+                  disabled={saving}
                   label={s.unsave}
                   onPress={() => {
                     void remove();
@@ -253,6 +266,6 @@ export function SavedScreen() {
         </>
       )}
       <SourceSheet fact={source} onClose={() => setSource(null)} />
-    </View>
+    </ReadingLayout>
   );
 }

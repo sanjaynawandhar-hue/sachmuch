@@ -5,6 +5,8 @@ import { strings } from "../i18n";
 import { useAppTheme } from "../theme";
 import { Action } from "./Surface";
 export function FactReader({
+  expanded = false,
+  saving = false,
   fact,
   language,
   saved,
@@ -12,6 +14,8 @@ export function FactReader({
   onShare,
   onSource,
 }: {
+  expanded?: boolean;
+  saving?: boolean;
   fact: MobileFact;
   language: "en" | "hi";
   saved: boolean;
@@ -21,11 +25,12 @@ export function FactReader({
 }) {
   const t = useAppTheme();
   const s = strings(language);
+  const Body = expanded ? View : ScrollView;
   return (
     <View
       style={{
-        flex: 1,
-        minHeight: 200,
+        flex: expanded ? undefined : 1,
+        minHeight: expanded ? undefined : 200,
         borderRadius: 28,
         backgroundColor: t.card,
         borderWidth: 1,
@@ -33,10 +38,14 @@ export function FactReader({
         overflow: "hidden",
       }}
     >
-      <ScrollView
+      <Body
         testID="fact-body"
-        contentContainerStyle={{ padding: 24, gap: 18 }}
-        showsVerticalScrollIndicator
+        {...(expanded
+          ? { style: { padding: 24, gap: 18 } }
+          : {
+              contentContainerStyle: { padding: 24, gap: 18 },
+              showsVerticalScrollIndicator: true,
+            })}
       >
         <View style={{ alignItems: "flex-start" }}>
           <View
@@ -125,7 +134,7 @@ export function FactReader({
             </Text>
           )}
         </View>
-      </ScrollView>
+      </Body>
       <View
         style={{
           padding: 14,
@@ -141,6 +150,7 @@ export function FactReader({
         </View>
         <Action
           compact
+          disabled={saving}
           selected={saved}
           label={saved ? s.unsave : s.save}
           icon="bookmark"
