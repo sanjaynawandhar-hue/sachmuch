@@ -9,10 +9,21 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.sachmuch.app",
-      "adaptiveIcon": { "backgroundColor": "#E9E4F0" },
+      "adaptiveIcon": {
+        "backgroundColor": "#E9E4F0"
+      },
       "edgeToEdgeEnabled": true
     },
-    "ios": { "bundleIdentifier": "com.sachmuch.app", "supportsTablet": true },
-    "splash": { "backgroundColor": "#E9E4F0", "resizeMode": "contain" }
+    "ios": {
+      "bundleIdentifier": "com.sachmuch.app",
+      "supportsTablet": true
+    },
+    "splash": {
+      "backgroundColor": "#E9E4F0",
+      "resizeMode": "contain"
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
   }
 }
