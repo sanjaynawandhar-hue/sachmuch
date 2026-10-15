@@ -1,6 +1,7 @@
 import React from "react";
 import Svg, { Path, Circle } from "react-native-svg";
 export type IconName =
+  | "heart"
   | "spark"
   | "bookmark"
   | "share"
@@ -15,6 +16,7 @@ export type IconName =
   | "moon"
   | "check";
 const paths: Record<IconName, string> = {
+  heart: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z",
   spark: "M12 2l2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z",
   bookmark: "M6 4h12v17l-6-4-6 4Z",
   share: "M12 16V3m-4 4 4-4 4 4M5 13v7h14v-7",

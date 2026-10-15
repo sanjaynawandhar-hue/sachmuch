@@ -38,6 +38,18 @@ export function SettingsScreen() {
       />
       {error && <Notice text={s.saveError} />}
       <Surface>
+        <Text style={{color: t.muted, fontSize: 14}}>{s.loved}</Text>
+        <Text accessibilityLabel={`${s.loved}: ${state.lovedIds.length}`} style={{color: t.accent, fontSize: 40, fontWeight: "700", marginVertical: 8}}>{state.lovedIds.length}</Text>
+        <Text style={{color: t.muted, fontSize: 13}}>{s.lovedBody}</Text>
+      </Surface>
+      <Surface>
+        <View style={{flexDirection: "row", alignItems: "center", gap: 16}}>
+          <View style={{flex: 1, gap: 6}}><Text style={{color: t.ink, fontSize: 17, fontWeight: "600"}}>{s.music}</Text><Text style={{color: t.muted, fontSize: 13, lineHeight: 20}}>{s.musicBody}</Text></View>
+          <Switch accessibilityLabel={s.music} value={state.preferences.music} onValueChange={(music) => { void change({music}); }} trackColor={{true: t.accent, false: t.border}} />
+        </View>
+        {state.preferences.music && <View style={{flexDirection: "row", gap: 10, marginTop: 16}}>{([0.06, 0.12] as const).map((musicVolume) => <Action key={musicVolume} label={musicVolume === 0.06 ? s.softer : s.soft} selected={state.preferences.musicVolume === musicVolume} onPress={() => { void change({musicVolume}); }} />)}</View>}
+      </Surface>
+      <Surface>
         <Text
           style={{
             color: t.ink,

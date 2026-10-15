@@ -56,3 +56,16 @@ test("unmount cancels request", async () => {
   await view.unmount();
   expect(signal?.aborted).toBe(true);
 });
+
+test("paged feed deduplicates, follows cursor and stops at the final page", async () => {
+  const cursor = "00000000-0000-0000-0000-000000000001";
+  global.fetch = jest.fn().mockResolvedValueOnce({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual], nextCursor: cursor})}).mockResolvedValueOnce({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual, {en: {...bilingual.en, id: "second"}}], nextCursor: null})});
+  const {result} = await renderHook(() => useFeed("https://example.org"));
+  await waitFor(() => expect(result.current.hasMore).toBe(true));
+  await act(() => result.current.loadMore());
+  expect(result.current.facts.map((f) => f.en.id)).toEqual([bilingual.en.id, "second"]);
+  expect(result.current.hasMore).toBe(false);
+  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/feed?paged=1&after=${cursor}`, expect.anything());
+  await act(() => result.current.loadMore());
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});

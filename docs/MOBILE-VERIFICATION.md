@@ -47,3 +47,12 @@ The first corrected native build exposed a second startup error: Expo developmen
 - Native paging regression verifies settled page selection and separate full-text reading. Physical swipe smoothness and the complete accessibility matrix are not exhaustively measured.
 
 No TestFlight upload or App Store submission was performed. The backend remains on its existing free infrastructure; no paid upgrade was selected.
+
+### 2026-10-15 update
+
+- Mobile: 49 tests pass, including persisted love/unlove, count in Settings, music/background controls, pagination, translation gaps and corrected content after refresh.
+- Web: 6 tests pass, including 100-record page boundary, last cursor, malformed cursor and redacted database errors.
+- Core/templates/connectors/UI/database/pipeline: 59/40/7/18/9/41 tests pass (229 total including mobile/web).
+- Workspace typechecks pass; mobile rechecked after new regression tests.
+- Staged deployment dpl_8jidMDH53TuJ6zKa2h6q8Pj8FiJk returns 100 + 53 unique facts, with null final cursor. Promoted to production.
+- Automated tests validate audio playback calls and lifecycle. Physical listening volume still depends on the iPhone's system volume.

@@ -24,6 +24,7 @@ interface Value {
   state: AppSnapshot;
   setPreferences(patch: Partial<Preferences>): Promise<void>;
   toggleSaved(fact: BilingualMobileFact): Promise<void>;
+  toggleLoved(id: string): Promise<void>;
   recordSignal(signal: FactSignal): Promise<void>;
 }
 const Context = createContext<Value | null>(null);
@@ -78,6 +79,7 @@ export function AppStateProvider({
       })),
     [update],
   );
+  const toggleLoved = useCallback((id: string) => update((s) => ({ ...s, lovedIds: s.lovedIds.includes(id) ? s.lovedIds.filter((value) => value !== id) : [...s.lovedIds, id] })), [update]);
   const recordSignal = useCallback(
     (signal: FactSignal) =>
       update((s) => ({ ...s, affinity: learn(s.affinity, signal) })),
@@ -114,7 +116,7 @@ export function AppStateProvider({
     );
   return (
     <Context.Provider
-      value={{ state, setPreferences, toggleSaved, recordSignal }}
+      value={{ state, setPreferences, toggleSaved, toggleLoved, recordSignal }}
     >
       {children}
     </Context.Provider>

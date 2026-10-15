@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Pressable, Image, ScrollView, Text, View } from "react-native";
 import type { MobileFact } from "@sachmuch/core";
 import { strings } from "../i18n";
 import { useAppTheme } from "../theme";
@@ -10,6 +10,8 @@ export function FactReader({
   fact,
   language,
   saved,
+  loved = false,
+  onLove,
   onSave,
   onShare,
   onSource,
@@ -19,6 +21,8 @@ export function FactReader({
   fact: MobileFact;
   language: "en" | "hi";
   saved: boolean;
+  loved?: boolean;
+  onLove?: () => void;
   onSave: () => void;
   onShare: () => void;
   onSource: () => void;
@@ -122,12 +126,9 @@ export function FactReader({
             gap: 4,
           }}
         >
-          <Text style={{ color: t.muted, fontSize: 11, letterSpacing: 1 }}>
-            {s.sourced.toLocaleUpperCase(language)}
-          </Text>
-          <Text style={{ color: t.ink, fontSize: 14, fontWeight: "600" }}>
-            {fact.publisher}
-          </Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={s.sources} onPress={onSource} hitSlop={10}><Text style={{ color: t.muted, fontSize: 10, textDecorationLine: "underline" }}>
+            {s.sourced}: {fact.publisher}
+          </Text></Pressable>
           {fact.attributionText && (
             <Text style={{ color: t.muted, fontSize: 12 }}>
               {fact.attributionText}
@@ -146,7 +147,7 @@ export function FactReader({
         }}
       >
         <View style={{ flex: 1 }}>
-          <Action label={s.sources} icon="external" onPress={onSource} />
+          {onLove && <Action compact label={loved ? s.unlove : s.love} selected={loved} icon="heart" onPress={onLove} />}
         </View>
         <Action
           compact

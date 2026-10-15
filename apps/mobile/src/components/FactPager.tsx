@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
+  Pressable,
   Image,
   Modal,
   ScrollView,
@@ -21,6 +22,8 @@ export function FactPager({
   index,
   language,
   savedIds,
+  lovedIds = [],
+  onLove,
   onIndexChange,
   onSave,
   onShare,
@@ -30,6 +33,8 @@ export function FactPager({
   index: number;
   language: "en" | "hi";
   savedIds: string[];
+  lovedIds?: string[];
+  onLove?: (fact: MobileFact) => void;
   onIndexChange: (index: number) => void;
   onSave: (fact: MobileFact) => void;
   onShare: (fact: MobileFact) => void;
@@ -42,15 +47,17 @@ export function FactPager({
   const [reading, setReading] = useState<MobileFact | null>(null);
   const list = useRef<FlatList<MobileFact>>(null);
   const settled = useRef(index);
+  const previousFacts = useRef(facts);
   useEffect(() => {
     if (height > 0 && index !== settled.current) {
       list.current?.scrollToOffset({
         offset: index * height,
-        animated: !t.reduceMotion,
+        animated: previousFacts.current === facts && !t.reduceMotion,
       });
       settled.current = index;
     }
-  }, [index, height, t.reduceMotion]);
+    previousFacts.current = facts;
+  }, [index, height, t.reduceMotion, facts]);
   useEffect(() => {
     if (height > 0)
       list.current?.scrollToOffset({ offset: index * height, animated: false });
@@ -86,7 +93,7 @@ export function FactPager({
           initialNumToRender={2}
           maxToRenderPerBatch={3}
           windowSize={3}
-          extraData={{ language, savedIds }}
+          extraData={{ language, savedIds, lovedIds }}
           getItemLayout={(_, i) => ({
             length: height,
             offset: height * i,
@@ -171,12 +178,12 @@ export function FactPager({
                     </Text>
                   )}
                   <View style={{ marginTop: "auto", gap: 8 }}>
-                    <Text
+                    <Pressable accessibilityRole="button" accessibilityLabel={s.sources} onPress={() => onSource(item)} hitSlop={10}><Text
                       numberOfLines={1}
-                      style={{ color: t.muted, fontSize: 12 }}
+                      style={{ color: t.muted, fontSize: 10, textDecorationLine: "underline" }}
                     >
                       {s.sourced}: {item.publisher}
-                    </Text>
+                    </Text></Pressable>
                     <Action
                       label={s.readFull}
                       onPress={() => setReading(item)}
@@ -193,11 +200,7 @@ export function FactPager({
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Action
-                      label={s.sources}
-                      icon="external"
-                      onPress={() => onSource(item)}
-                    />
+                    <Action compact icon="heart" selected={lovedIds.includes(item.id)} label={lovedIds.includes(item.id) ? s.unlove : s.love} onPress={() => onLove?.(item)} />
                   </View>
                   <Action
                     compact
@@ -248,6 +251,8 @@ export function FactPager({
                 expanded
                 fact={reading}
                 language={language}
+                loved={lovedIds.includes(reading.id)}
+                onLove={() => onLove?.(reading)}
                 saved={savedIds.includes(reading.id)}
                 onSave={() => onSave(reading)}
                 onShare={() => onShare(reading)}

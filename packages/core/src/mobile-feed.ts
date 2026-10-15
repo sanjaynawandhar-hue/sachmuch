@@ -24,6 +24,7 @@ export interface BilingualMobileFact {
   hi?: MobileFact;
 }
 export interface FeedEnvelope {
+  nextCursor?: string | null;
   version: 1;
   fetchedAt: string;
   facts: BilingualMobileFact[];
@@ -140,5 +141,6 @@ export function parseFeedEnvelope(input: unknown): FeedEnvelope {
   const facts = input.facts.map(parseBilingualFact);
   if (new Set(facts.map((f) => f.en.id)).size !== facts.length)
     throw new Error("Duplicate fact");
-  return { version: 1, fetchedAt: input.fetchedAt, facts };
+  if (input.nextCursor !== undefined && input.nextCursor !== null && (typeof input.nextCursor !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.nextCursor))) throw Error("Invalid cursor");
+  return { version: 1, fetchedAt: input.fetchedAt, facts, ...(input.nextCursor !== undefined ? {nextCursor: input.nextCursor as string | null} : {}) };
 }

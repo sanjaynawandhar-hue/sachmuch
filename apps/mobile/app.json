@@ -25,6 +25,14 @@
             "enableSceneSupport": true
           }
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
       ]
     ],
     "icon": "./assets/icon.png"

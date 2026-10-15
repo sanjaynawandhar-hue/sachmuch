@@ -80,3 +80,13 @@ The production feed is https://sachmuch-web-black.vercel.app/api/feed. The exist
 The installed iPhone Release build uses `index.js`, `EXPO_PUBLIC_API_URL=https://sachmuch-web-black.vercel.app`, and `EXPO_PUBLIC_SAMPLE_MODE=0`. Its JavaScript is embedded, so Metro is unnecessary. This remains a developer-signed installation, not a TestFlight/App Store distribution.
 
 The new app icon is `apps/mobile/assets/icon.png`. Vertical paging uses a native FlatList with fixed page geometry and a small render window. The full reading sheet keeps long text independent of feed swipes.
+
+### Reading, love and music update (2026-10-15)
+
+The feed uses native vertical paging, without bottom arrow buttons. Source details remain available from a small publisher link. The heart toggles a personal loved-fact ID; Settings displays the distinct total. Likes, bookmarks and music preferences persist locally, without an account or a global public like count.
+
+A bundled original 48-second instrumental loop plays at 12% player volume by default. Settings offers off, 6% and 12%. The app mixes with other audio and pauses when inactive or backgrounded. It requests no microphone permission. Regenerate the original audio using `python3 apps/mobile/assets/music/generate.py`.
+
+The mobile client requests `/api/feed?paged=1`, receiving up to 100 facts and a UUID `nextCursor`. Subsequent requests pass `after`. The server uses indexed UUID seek pagination; the app retains at most 600 recent records. Refresh restarts traversal and fetches updated fact content. The original unpaged endpoint remains compatible with earlier builds. The content corpus is currently 153 live facts, not millions. Growth depends on the existing ingestion pipeline and verification gates.
+
+The scheduled importer was failing because pnpm/action-setup specified a version conflicting with packageManager. Remove the workflow override and allow the repository version. Repository Actions secret DATABASE_URL must contain the existing Supabase session-pooler connection string before ingestion can run. Never put it in source control or chat.

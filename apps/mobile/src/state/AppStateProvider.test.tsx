@@ -83,3 +83,14 @@ test("unmount before hydration does not mount children", async () => {
   finish(null);
   expect(screen.queryByText("en")).toBeNull();
 });
+test('love toggles persist once and survive hydration', async () => {
+ let raw: string|null=null;
+ const adapter={getItem:async()=>raw,setItem:async(_k:string,v:string)=>{raw=v;}};
+ function Love(){const {state,toggleLoved}=useAppState();return <><Text>{`Loved: ${state.lovedIds.length}`}</Text><Button title="Love" onPress={()=>{void toggleLoved('one');}} /></>;}
+ await render(<AppStateProvider store={createAppStore(adapter)}><Love /></AppStateProvider>);
+ await fireEvent.press(await screen.findByText('Love'));
+ await waitFor(()=>expect(screen.getByText('Loved: 1')).toBeTruthy());
+ expect((await createAppStore(adapter).load()).lovedIds).toEqual(['one']);
+ await fireEvent.press(screen.getByText('Love'));
+ await waitFor(()=>expect(screen.getByText('Loved: 0')).toBeTruthy());
+});

@@ -34,7 +34,7 @@ test("readable fact exposes source, saved state, and actions", async () => {
     ),
   );
   await screen.findByText("A surprising fact");
-  expect(screen.getByText("Example publisher")).toBeTruthy();
+  expect(screen.getByText("Sourced from: Example publisher")).toBeTruthy();
   expect(
     screen.getByRole("button", { name: "Remove saved fact" }),
   ).toBeTruthy();

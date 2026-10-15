@@ -1,4 +1,12 @@
 const en = {
+  love: "Love fact",
+  unlove: "Unlike fact",
+  loved: "Facts you love",
+  lovedBody: "Your personal total on this iPhone.",
+  music: "Instrumental music",
+  musicBody: "A gentle original soundtrack. Pauses when you leave the app.",
+  soft: "Soft",
+  softer: "Very soft",
   discover: "Discover",
   saved: "Saved",
   settings: "Settings",
@@ -71,6 +79,14 @@ const en = {
   imageCredit: "Image credit",
 };
 const hi: typeof en = {
+  love: "तथ्य पसंद करें",
+  unlove: "पसंद हटाएँ",
+  loved: "आपके पसंदीदा तथ्य",
+  lovedBody: "इस iPhone पर आपकी निजी गिनती।",
+  music: "हल्का संगीत",
+  musicBody: "शांत वाद्य संगीत। ऐप छोड़ने पर रुक जाता है।",
+  soft: "हल्का",
+  softer: "बहुत हल्का",
   discover: "खोजें",
   saved: "सहेजे हुए",
   settings: "सेटिंग",

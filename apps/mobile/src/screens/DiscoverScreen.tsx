@@ -37,7 +37,7 @@ export function DiscoverScreen({
 }) {
   const expanded = useExpandedReading();
   const feed = useFeed(origin, !previewFacts);
-  const { state, toggleSaved, recordSignal } = useAppState();
+  const { state, toggleSaved, toggleLoved, recordSignal } = useAppState();
   const t = useAppTheme();
   const lang = state.preferences.language;
   const s = strings(lang);
@@ -46,15 +46,17 @@ export function DiscoverScreen({
   const data = previewFacts ?? feed.facts;
   const affinity = useRef(state.affinity);
   affinity.current = state.affinity;
-  const ordered = useMemo(
-    () =>
-      buildFeed(
-        data.map((f) => f.en),
-        affinity.current,
-        data.length,
-      ).map((f) => data.find((b) => b.en.id === f.id)!),
-    [data],
-  );
+  const orderCache = useRef<BilingualMobileFact[]>([]);
+  const ordered = useMemo(() => {
+    const current = new Map(data.map((f) => [f.en.id, f]));
+    const retained = orderCache.current.filter((f) => current.has(f.en.id)).map((f) => current.get(f.en.id)!);
+    const previous = new Set(retained.map((f) => f.en.id));
+    const fresh = data.filter((f) => !previous.has(f.en.id));
+    const byId = new Map(fresh.map((f) => [f.en.id, f]));
+    const result = [...retained, ...buildFeed(fresh.map((f) => f.en), affinity.current, fresh.length).map((f) => byId.get(f.id)!)];
+    orderCache.current = result;
+    return result;
+  }, [data]);
   const facts = useMemo(
     () => selectLanguageFacts(ordered, lang),
     [ordered, lang],
@@ -66,6 +68,9 @@ export function DiscoverScreen({
   const selected = resolveCurrentId(facts, currentId);
   const index = facts.findIndex((f) => f.id === selected);
   const fact = facts[index];
+  useEffect(() => {
+    if (!previewFacts && feed.hasMore && index >= facts.length - 10 && !feed.error) void feed.loadMore();
+  }, [index, data, facts.length, feed.hasMore, feed.loadMore, feed.error, previewFacts]);
   const [foreground, setForeground] = useState(
     AppState.currentState === "active",
   );
@@ -100,6 +105,7 @@ export function DiscoverScreen({
   function move(delta: number) {
     if (!fact || (delta < 0 && index === 0)) return;
     if (index + delta >= facts.length) {
+      if (feed.hasMore) { void feed.loadMore(); return; }
       setEnded(true);
       return;
     }
@@ -139,6 +145,10 @@ export function DiscoverScreen({
     } catch {
       setNotice("save");
     }
+  }
+  async function love(target = fact) {
+    if (!target) return;
+    try { await toggleLoved(target.id); setNotice(null); } catch { setNotice("save"); }
   }
   async function share(target = fact) {
     if (!target) return;
@@ -261,6 +271,9 @@ export function DiscoverScreen({
             {...pan.panHandlers}
             accessible
             accessibilityLabel={s.swipe}
+            accessibilityRole="adjustable"
+            accessibilityActions={[{name: "increment", label: s.next}, {name: "decrement", label: s.previous}]}
+            onAccessibilityAction={(e) => move(e.nativeEvent.actionName === "increment" ? 1 : -1)}
             style={{
               paddingVertical: 12,
               flexDirection: "row",
@@ -285,7 +298,7 @@ export function DiscoverScreen({
               }}
             >
               {String(index + 1).padStart(2, "0")} /{" "}
-              {String(facts.length).padStart(2, "0")}
+              {String(facts.length).padStart(2, "0")}{feed.hasMore ? "+" : ""}
             </Text>
           </View>
           {expanded ? (
@@ -300,6 +313,8 @@ export function DiscoverScreen({
                 key={`${fact.id}-${lang}`}
                 fact={fact}
                 language={lang}
+                loved={state.lovedIds.includes(fact.id)}
+                onLove={() => { void love(); }}
                 saved={state.saved.some((e) => e.fact.en.id === fact.id)}
                 onSave={() => {
                   void save();
@@ -315,6 +330,8 @@ export function DiscoverScreen({
               facts={facts}
               index={Math.max(0, index)}
               language={lang}
+              lovedIds={state.lovedIds}
+              onLove={(f) => { void love(f); }}
               savedIds={state.saved.map((e) => e.fact.en.id)}
               onIndexChange={(next) => {
                 setCurrentId(facts[next]!.id);
@@ -331,30 +348,6 @@ export function DiscoverScreen({
               onSource={setSource}
             />
           )}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingTop: 12,
-            }}
-          >
-            <Action
-              label={s.previous}
-              compact
-              icon="up"
-              disabled={index === 0}
-              onPress={() => move(-1)}
-            />
-            <Text style={{ color: t.muted, fontSize: 11 }}>{s.tagline}</Text>
-            <Action
-              label={s.next}
-              compact
-              primary
-              icon="down"
-              onPress={() => move(1)}
-            />
-          </View>
         </>
       ) : (
         <View style={{ flex: 1, justifyContent: "center" }}>

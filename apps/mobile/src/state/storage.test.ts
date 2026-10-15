@@ -21,6 +21,8 @@ test("defaults follow system appearance and reads do not write", async () => {
     language: "en",
     appearance: "system",
     haptics: true,
+    music: true,
+    musicVolume: 0.12,
   });
   expect(db.raw).toBeNull();
 });
@@ -111,4 +113,11 @@ test("invalid affinity cannot poison the ranker", async () => {
     },
   });
   expect((await createAppStore(db).load()).affinity.byCategory).toEqual({});
+});
+test("hydrates old installs with music and love defaults and validates persisted loves", async () => {
+ const old=memory(JSON.stringify({version:1,preferences:{language:'en'},lovedIds:['fact-a','fact-a',null,42,'']}));
+ const state=await createAppStore(old).load();
+ expect(state.preferences.music).toBe(true);
+ expect(state.preferences.musicVolume).toBe(0.12);
+ expect(state.lovedIds).toEqual(['fact-a']);
 });

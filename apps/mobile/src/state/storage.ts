@@ -8,6 +8,8 @@ export interface Preferences {
   language: "en" | "hi";
   appearance: "system" | "light" | "dark";
   haptics: boolean;
+  music: boolean;
+  musicVolume: number;
 }
 export interface SavedFact {
   fact: BilingualMobileFact;
@@ -17,6 +19,7 @@ export interface AppSnapshot {
   version: 1;
   preferences: Preferences;
   saved: SavedFact[];
+  lovedIds: string[];
   affinity: Affinity;
 }
 export interface StorageAdapter {
@@ -26,8 +29,9 @@ export interface StorageAdapter {
 const KEY = "sachmuch.app.v1";
 const defaults = (): AppSnapshot => ({
   version: 1,
-  preferences: { language: "en", appearance: "system", haptics: true },
+  preferences: { language: "en", appearance: "system", haptics: true, music: true, musicVolume: 0.12 },
   saved: [],
+  lovedIds: [],
   affinity: emptyAffinity(),
 });
 function decode(raw: string | null): AppSnapshot {
@@ -50,6 +54,10 @@ function decode(raw: string | null): AppSnapshot {
     state.preferences.appearance = p.preferences.appearance;
   if (typeof p.preferences?.haptics === "boolean")
     state.preferences.haptics = p.preferences.haptics;
+  if (typeof p.preferences?.music === "boolean") state.preferences.music = p.preferences.music;
+  if (typeof p.preferences?.musicVolume === "number" && Number.isFinite(p.preferences.musicVolume))
+    state.preferences.musicVolume = Math.max(0, Math.min(0.3, p.preferences.musicVolume));
+  state.lovedIds = [...new Set<string>((Array.isArray(p.lovedIds) ? p.lovedIds : []).filter((id: unknown): id is string => typeof id === "string" && id.trim().length > 0))];
   const ids = new Set<string>();
   for (const entry of Array.isArray(p.saved) ? p.saved : []) {
     try {

@@ -22,9 +22,12 @@ function feedUrl(origin: string, development: boolean): string {
 }
 export async function fetchFeed(
   origin: string,
-  options: { signal?: AbortSignal; development: boolean },
+  options: { signal?: AbortSignal; development: boolean; paged?: boolean; after?: string },
 ): Promise<FeedEnvelope> {
-  const url = feedUrl(origin, options.development);
+  const target = new URL(feedUrl(origin, options.development));
+  if (options.paged) target.searchParams.set("paged", "1");
+  if (options.after) target.searchParams.set("after", options.after);
+  const url = target.toString();
   if (options.signal?.aborted) throw Error("Aborted");
   const controller = new AbortController();
   const abort = () => controller.abort();

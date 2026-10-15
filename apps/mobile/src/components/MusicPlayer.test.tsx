@@ -1,0 +1,28 @@
+import React from "react";
+import { render, waitFor, act } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
+import { MusicPlayer } from "./MusicPlayer";
+const mockPlayer = {play: jest.fn(), pause: jest.fn(), loop: false, volume: 1};
+let mockPreferences = {music: true, musicVolume: 0.12};
+jest.mock("expo-audio", () => ({useAudioPlayer: () => mockPlayer, setAudioModeAsync: async () => {}}));
+jest.mock("../state/AppStateProvider", () => ({useAppState: () => ({state: {preferences: mockPreferences}})}));
+test("quiet looping music pauses in background and respects off preference", async () => {
+  let change!: (state: AppStateStatus) => void;
+  const subscription = jest.spyOn(AppState, "addEventListener").mockImplementation((_event, callback) => { change = callback; return {remove: jest.fn()}; });
+  const view = await render(<MusicPlayer />);
+  await act(() => change("active"));
+  await waitFor(() => expect(mockPlayer.play).toHaveBeenCalled());
+  expect(mockPlayer.volume).toBe(0.12);
+  expect(mockPlayer.loop).toBe(true);
+  mockPlayer.pause.mockClear();
+  await act(() => change("background"));
+  expect(mockPlayer.pause).toHaveBeenCalled();
+  mockPreferences = {music: false, musicVolume: 0.06};
+  await view.rerender(<MusicPlayer />);
+  mockPlayer.play.mockClear();
+  await act(() => change("active"));
+  expect(mockPlayer.play).not.toHaveBeenCalled();
+  expect(mockPlayer.volume).toBe(0.06);
+  await view.unmount();
+  subscription.mockRestore();
+});

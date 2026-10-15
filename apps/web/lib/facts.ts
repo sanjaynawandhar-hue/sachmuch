@@ -46,7 +46,7 @@ export interface BilingualFact {
   hi?: FactCardData;
 }
 
-export async function getFeedFacts(limit = 300): Promise<BilingualFact[]> {
+export async function getFeedFacts(limit = 300, page?: { after?: string }): Promise<BilingualFact[]> {
   const rows = await sql<FactRow[]>`
     SELECT f.id, f.category_id, c.slug AS category_slug, c.name_en, c.name_hi, c.emoji,
            f.hook_en, f.body_en, f.hook_hi, f.body_hi, f.hi_missing,
@@ -71,7 +71,8 @@ export async function getFeedFacts(limit = 300): Promise<BilingualFact[]> {
          LIMIT 1
       ) img ON true
      WHERE f.status = 'live'
-     ORDER BY f.boost_count DESC, f.quality DESC, f.id
+       ${page?.after ? sql`AND f.id > ${page.after}::uuid` : sql``}
+     ORDER BY ${page ? sql`f.id` : sql`f.boost_count DESC, f.quality DESC, f.id`}
      LIMIT ${limit}
   `;
 

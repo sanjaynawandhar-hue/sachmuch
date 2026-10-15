@@ -15,7 +15,7 @@ export function SavedScreen() {
   const expanded = useExpandedReading();
   const removing = useRef(false);
   const [saving, setSaving] = useState(false);
-  const { state, toggleSaved } = useAppState();
+  const { state, toggleSaved, toggleLoved } = useAppState();
   const t = useAppTheme();
   const s = strings(state.preferences.language);
   const insets = useSafeAreaInsets();
@@ -88,6 +88,8 @@ export function SavedScreen() {
             <FactReader
               expanded={expanded}
               saving={saving}
+              loved={state.lovedIds.includes(fact.id)}
+              onLove={() => { void toggleLoved(fact.id).catch(() => setError("save")); }}
               fact={fact}
               language={lang}
               saved

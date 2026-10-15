@@ -9,6 +9,9 @@ export function useFeed(origin: string, enabled = true) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const generation = useRef(0);
+  const cursor = useRef<string | null>(null);
+  const busy = useRef(false);
+  const [hasMore, setHasMore] = useState(false);
   useEffect(() => {
     if (!enabled) {
       setStatus("ready");
@@ -16,11 +19,16 @@ export function useFeed(origin: string, enabled = true) {
     }
     const id = ++generation.current;
     const controller = new AbortController();
+    cursor.current = null;
+    busy.current = false;
+    setHasMore(false);
     setStatus("loading");
     setError(null);
-    fetchFeed(origin, { signal: controller.signal, development: __DEV__ })
+    fetchFeed(origin, { signal: controller.signal, development: __DEV__, paged: true })
       .then((feed) => {
         if (id === generation.current) {
+          cursor.current = feed.nextCursor ?? null;
+          setHasMore(!!cursor.current);
           setFacts(feed.facts);
           setStatus("ready");
         }
@@ -37,5 +45,22 @@ export function useFeed(origin: string, enabled = true) {
     };
   }, [origin, attempt, enabled]);
   const refresh = useCallback(() => setAttempt((n) => n + 1), []);
-  return { facts, status, error, refresh };
+  const loadMore = useCallback(async () => {
+    if (!enabled || busy.current || !cursor.current) return;
+    busy.current = true;
+    const id = generation.current;
+    try {
+      const page = await fetchFeed(origin, {development: __DEV__, paged: true, after: cursor.current});
+      if (id !== generation.current) return;
+      cursor.current = page.nextCursor ?? null;
+      setHasMore(!!cursor.current);
+      setFacts((previous) => {
+        const ids = new Set(previous.map((f) => f.en.id));
+        return [...previous, ...page.facts.filter((f) => !ids.has(f.en.id))].slice(-600);
+      });
+      setError(null);
+    } catch { if (id === generation.current) setError("unavailable"); }
+    finally { if (id === generation.current) busy.current = false; }
+  }, [origin, enabled]);
+  return { facts, status, error, refresh, hasMore, loadMore };
 }

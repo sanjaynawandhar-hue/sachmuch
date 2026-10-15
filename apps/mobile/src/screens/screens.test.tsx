@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -62,7 +63,7 @@ test("feed displays content, source and finite end; body scrolling does not adva
   });
   expect(screen.getAllByText("A surprising fact").length).toBeGreaterThan(0);
   await fireEvent.press(screen.getByRole("button", { name: "Close" }));
-  await fireEvent.press(screen.getByRole("button", { name: "Next fact" }));
+  await act(() => screen.getByRole("adjustable").props.onAccessibilityAction({nativeEvent: {actionName: "increment"}}));
   expect(await screen.findByText("You’re all caught up.")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Read again" }));
   expect(await screen.findByText("A surprising fact")).toBeTruthy();
@@ -213,5 +214,41 @@ test("large text has a scrollable page with reachable previous/next controls", a
   await screen.findByText("A surprising fact");
   const page = screen.getByTestId("accessible-discover-scroll");
   expect(page.props.scrollEnabled).not.toBe(false);
-  expect(screen.getByRole("button", { name: "Next fact" })).toBeTruthy();
+  expect(screen.getByRole("adjustable").props.accessibilityActions).toContainEqual({name: "increment", label: "Next fact"});
+  expect(screen.queryByRole("button", {name: "Next fact"})).toBeNull();
+});
+
+ test("love counts in Settings and music preferences persist", async () => {
+  const store = createAppStore({getItem: async () => null, setItem: async () => {}});
+  const view = await render(wrapper(<DiscoverScreen previewFacts={[bilingual]} />, store));
+  await fireEvent.press(await screen.findByRole("button", {name: "Love fact"}));
+  expect(await screen.findByRole("button", {name: "Unlike fact"})).toBeTruthy();
+  expect((await store.load()).lovedIds).toEqual([bilingual.en.id]);
+  await view.rerender(wrapper(<SettingsScreen />, store));
+  expect(await screen.findByLabelText("Facts you love: 1")).toBeTruthy();
+  await fireEvent(screen.getByRole("switch", {name: "Instrumental music"}), "valueChange", false);
+  await waitFor(async () => expect((await store.load()).preferences.music).toBe(false));
+ });
+
+test("Hindi feed continues past consecutive pages without translations", async () => {
+  const store = createAppStore({getItem: async () => null, setItem: async () => {}});
+  await store.load();
+  await store.update((s) => ({...s, preferences: {...s.preferences, language: "hi"}}));
+  const page = (facts: unknown[], n: number | null) => ({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts, nextCursor: n === null ? null : `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`})});
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(page([bilingual], 1))
+    .mockResolvedValueOnce(page([{en: {...fact.en, id: "two"}}], 2))
+    .mockResolvedValueOnce(page([{en: {...fact.en, id: "three"}}], 3))
+    .mockResolvedValueOnce(page([{en: {...bilingual.en, id: "four"}, hi: {...bilingual.hi!, id: "four", hook: "एक और खोज"}}], null));
+  await render(wrapper(<DiscoverScreen origin="https://example.org" />, store));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+  expect(await screen.findByText("एक और खोज")).toBeTruthy();
+});
+
+test("refresh uses corrected contents for existing fact IDs", async () => {
+  const view = await render(wrapper(<DiscoverScreen previewFacts={[bilingual]} />));
+  await screen.findByText("A surprising fact");
+  await view.rerender(wrapper(<DiscoverScreen previewFacts={[{...bilingual, en: {...bilingual.en, hook: "Corrected fact"}}]} />));
+  expect(await screen.findByText("Corrected fact")).toBeTruthy();
+  expect(screen.queryByText("A surprising fact")).toBeNull();
 });
