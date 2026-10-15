@@ -27,6 +27,7 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("expo-haptics", () => ({ selectionAsync: async () => {} }));
 const original = global.fetch;
 beforeEach(() => {
+  jest.spyOn(require("react-native"), "useWindowDimensions").mockReturnValue({width:390,height:844,scale:3,fontScale:1});
   global.fetch = jest.fn(
     async () =>
       ({
@@ -55,10 +56,12 @@ function wrapper(
 test("feed displays content, source and finite end; body scrolling does not advance", async () => {
   await render(wrapper(<DiscoverScreen origin="https://example.org" />));
   await screen.findByText("A surprising fact");
-  await fireEvent.scroll(screen.getByTestId("fact-body"), {
+  await fireEvent.press(screen.getByRole("button", { name: "Read full fact" }));
+  await fireEvent.scroll(screen.getByTestId("full-fact-reader"), {
     nativeEvent: { contentOffset: { y: 80 } },
   });
-  expect(screen.getByText("A surprising fact")).toBeTruthy();
+  expect(screen.getAllByText("A surprising fact").length).toBeGreaterThan(0);
+  await fireEvent.press(screen.getByRole("button", { name: "Close" }));
   await fireEvent.press(screen.getByRole("button", { name: "Next fact" }));
   expect(await screen.findByText("You’re all caught up.")).toBeTruthy();
   await fireEvent.press(screen.getByRole("button", { name: "Read again" }));

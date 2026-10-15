@@ -1,0 +1,14 @@
+.git
+.superpowers
+**/node_modules
+**/.next
+**/.expo
+**/dist
+**/coverage
+**/*.log
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+apps/mobile/ios
+apps/mobile/android
+pipeline/.cache

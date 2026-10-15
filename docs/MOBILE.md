@@ -33,7 +33,7 @@ Never put DATABASE_URL or Supabase service credentials in EXPO_PUBLIC variables.
 
 ## Reading behavior
 
-Swipe the labelled strip immediately above the card, or use the previous/next buttons. The card body scrolls independently, so reading a long explanation never skips a fact. The mixed feed uses shared category-affinity ranking and reaches an explicit end rather than pretending to be infinite.
+Swipe up or down on the fact card to move through the native paged feed, or use the up/down buttons. Tap Read full fact for a separate scrollable reading view. Large text uses an expanded reading layout with accessible navigation. The mixed feed uses shared category-affinity ranking and reaches an explicit end rather than pretending to be infinite.
 
 Hindi Discover includes complete Hindi facts only. Switching languages keeps the current fact when possible. Saved facts retain both available languages and their save date; missing Hindi is clearly labelled, with an explicit option to read English.
 
@@ -72,3 +72,11 @@ export SKIP_BUNDLING_METRO_IP=1
 ```
 
 The production JavaScript flag is required: Expo's development JavaScript initializes server-only websocket tools and fails when embedded without Metro. Build the Debug native target with the selected signing team, then install over USB. These generated-native overrides are cleared by prebuild. Normal release builds embed JavaScript automatically and use the live API origin.
+
+## Live deployment — 2026-10-15
+
+The production feed is https://sachmuch-web-black.vercel.app/api/feed. The existing Supabase project was resumed, and the staged backend was validated before promotion. The public endpoint returned 153 published facts, including 140 complete Hindi translations across 9 categories.
+
+The installed iPhone Release build uses `index.js`, `EXPO_PUBLIC_API_URL=https://sachmuch-web-black.vercel.app`, and `EXPO_PUBLIC_SAMPLE_MODE=0`. Its JavaScript is embedded, so Metro is unnecessary. This remains a developer-signed installation, not a TestFlight/App Store distribution.
+
+The new app icon is `apps/mobile/assets/icon.png`. Vertical paging uses a native FlatList with fixed page geometry and a small render window. The full reading sheet keeps long text independent of feed swipes.

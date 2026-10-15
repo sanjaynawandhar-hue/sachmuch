@@ -22,6 +22,7 @@ import { resolveCurrentId, selectLanguageFacts } from "../feed/selection";
 import { useAppTheme } from "../theme";
 import { strings } from "../i18n";
 import { Action, Heading, Notice, Surface } from "../components/Surface";
+import { FactPager } from "../components/FactPager";
 import { FactReader } from "../components/FactReader";
 import { SourceSheet } from "../components/SourceSheet";
 import { LanguagePicker } from "../components/LanguagePicker";
@@ -128,9 +129,9 @@ export function DiscoverScreen({
       }),
     [],
   );
-  async function save() {
-    if (!fact) return;
-    const original = data.find((f) => f.en.id === fact.id);
+  async function save(target = fact) {
+    if (!target) return;
+    const original = data.find((f) => f.en.id === target.id);
     if (!original) return;
     try {
       await toggleSaved(original);
@@ -139,11 +140,11 @@ export function DiscoverScreen({
       setNotice("save");
     }
   }
-  async function share() {
-    if (!fact) return;
+  async function share(target = fact) {
+    if (!target) return;
     try {
       await Share.share({
-        message: `${fact.hook}\n\n${fact.body}\n\n${s.sourced}: ${fact.publisher}\n${fact.sourceUrl}`,
+        message: `${target.hook}\n\n${target.body}\n\n${s.sourced}: ${target.publisher}\n${target.sourceUrl}`,
       });
     } catch {
       setNotice("action");
@@ -185,7 +186,16 @@ export function DiscoverScreen({
         </View>
         <LanguagePicker onError={() => setNotice("save")} />
       </View>
-      <Heading eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} />
+      <Text
+        style={{
+          color: t.muted,
+          fontSize: 13,
+          paddingTop: 12,
+          paddingBottom: 4,
+        }}
+      >
+        {s.subtitle}
+      </Text>
       {previewFacts && (
         <Text
           style={{
@@ -278,27 +288,49 @@ export function DiscoverScreen({
               {String(facts.length).padStart(2, "0")}
             </Text>
           </View>
-          <Animated.View
-            style={{
-              flex: expanded ? undefined : 1,
-              transform: [{ translateY: translate }],
-            }}
-          >
-            <FactReader
-              expanded={expanded}
-              key={`${fact.id}-${lang}`}
-              fact={fact}
+          {expanded ? (
+            <Animated.View
+              style={{
+                flex: expanded ? undefined : 1,
+                transform: [{ translateY: translate }],
+              }}
+            >
+              <FactReader
+                expanded={expanded}
+                key={`${fact.id}-${lang}`}
+                fact={fact}
+                language={lang}
+                saved={state.saved.some((e) => e.fact.en.id === fact.id)}
+                onSave={() => {
+                  void save();
+                }}
+                onShare={() => {
+                  void share();
+                }}
+                onSource={() => setSource(fact)}
+              />
+            </Animated.View>
+          ) : (
+            <FactPager
+              facts={facts}
+              index={Math.max(0, index)}
               language={lang}
-              saved={state.saved.some((e) => e.fact.en.id === fact.id)}
-              onSave={() => {
-                void save();
+              savedIds={state.saved.map((e) => e.fact.en.id)}
+              onIndexChange={(next) => {
+                setCurrentId(facts[next]!.id);
+                setNotice(null);
+                if (state.preferences.haptics)
+                  void Haptics.selectionAsync().catch(() => {});
               }}
-              onShare={() => {
-                void share();
+              onSave={(f) => {
+                void save(f);
               }}
-              onSource={() => setSource(fact)}
+              onShare={(f) => {
+                void share(f);
+              }}
+              onSource={setSource}
             />
-          </Animated.View>
+          )}
           <View
             style={{
               flexDirection: "row",
@@ -310,7 +342,7 @@ export function DiscoverScreen({
             <Action
               label={s.previous}
               compact
-              icon="back"
+              icon="up"
               disabled={index === 0}
               onPress={() => move(-1)}
             />
@@ -319,7 +351,7 @@ export function DiscoverScreen({
               label={s.next}
               compact
               primary
-              icon="arrow"
+              icon="down"
               onPress={() => move(1)}
             />
           </View>

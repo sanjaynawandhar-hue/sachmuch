@@ -35,3 +35,15 @@ The initial USB installation succeeded, but launch immediately crashed. The iPho
 Enabled Expo's SDK 57 `expo-build-properties` option `ios.enableSceneSupport`. Regenerated native output now declares `EXExpoAppSceneDelegate` and makes AppDelegate conform to `ExpoReactNativeFactoryProvider`, with window creation delegated to the scene. The same failure was reproduced on-device before this change. All 41 mobile tests and mobile type checking passed after the configuration change. Physical-device reinstallation verification is recorded below when complete.
 
 The first corrected native build exposed a second startup error: Expo development JavaScript refused to initialize devtools websocket connections in an embedded environment. Added a dedicated `preview.js` entry and bundled it with `--dev false`, preserving the standard production entry's live-feed behavior. Rebuilt, signed, and installed over USB. On 2026-10-15 at 10:48 IST, a device screenshot confirmed the rendered Discover screen, labelled sample preview, source/save/share controls, and all three tabs on the physical iPhone 14 Pro Max. Launch monitoring showed no termination during this check. All 41 mobile tests passed again; type checking passed. This verifies startup and visible rendering, not the full interaction/accessibility matrix.
+
+## Live release and icon / vertical feed — 2026-10-15
+
+- Resumed the existing paused Supabase project; dashboard reported Healthy.
+- Staged Vercel deployment `dpl_BQmkMWUnYqxAm6R6uUn4i7eRcG6Z` built successfully against production data, then was promoted to the existing domain.
+- Both staged and unauthenticated public `/api/feed` returned HTTP 200. The shared mobile parser accepted 153 facts, 140 Hindi renderings, and 9 categories.
+- Repository tests: 219 passed, including 42 mobile tests. All package type checks passed.
+- Native Release build succeeded, installed on the iPhone 14 Pro Max, and launched. Screenshot `verification/iphone-live.png` confirms 01 / 153, live source/image content, the vertical feed, and no sample banner.
+- AppIcon asset catalog contains the generated opaque 1024px app icon. Configuration points to the persisted project asset.
+- Native paging regression verifies settled page selection and separate full-text reading. Physical swipe smoothness and the complete accessibility matrix are not exhaustively measured.
+
+No TestFlight upload or App Store submission was performed. The backend remains on its existing free infrastructure; no paid upgrade was selected.

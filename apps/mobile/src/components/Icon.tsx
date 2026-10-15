@@ -6,6 +6,8 @@ export type IconName =
   | "share"
   | "arrow"
   | "back"
+  | "up"
+  | "down"
   | "close"
   | "settings"
   | "external"
@@ -17,6 +19,8 @@ const paths: Record<IconName, string> = {
   bookmark: "M6 4h12v17l-6-4-6 4Z",
   share: "M12 16V3m-4 4 4-4 4 4M5 13v7h14v-7",
   arrow: "M5 12h14m-6-6 6 6-6 6",
+  up: "M12 19V5m-6 6 6-6 6 6",
+  down: "M12 5v14m-6-6 6 6 6-6",
   back: "M19 12H5m6-6-6 6 6 6",
   close: "m6 6 12 12M6 18 18 6",
   settings: "M4 7h16M4 17h16M9 4v6m6 4v6",

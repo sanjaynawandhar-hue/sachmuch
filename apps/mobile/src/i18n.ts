@@ -19,7 +19,8 @@ const en = {
   close: "Close",
   next: "Next fact",
   previous: "Previous fact",
-  swipe: "SWIPE HERE TO EXPLORE",
+  swipe: "SWIPE UP TO DISCOVER",
+  readFull: "Read full fact",
   loading: "Finding something worth knowing…",
   empty: "A little quiet here.",
   emptyBody:
@@ -90,7 +91,8 @@ const hi: typeof en = {
   close: "बंद करें",
   next: "अगला तथ्य",
   previous: "पिछला तथ्य",
-  swipe: "आगे जानने के लिए यहाँ स्वाइप करें",
+  swipe: "अगला तथ्य देखने के लिए ऊपर स्वाइप करें",
+  readFull: "पूरा तथ्य पढ़ें",
   loading: "कुछ रोचक खोज रहे हैं…",
   empty: "अभी यहाँ थोड़ा सन्नाटा है।",
   emptyBody:
