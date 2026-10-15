@@ -55,3 +55,20 @@ The web build also needs network access for its existing Google Fonts configurat
 ## Distribution
 
 A simulator build is not a signed iPhone download. For TestFlight, configure an Apple Developer team, confirm rights to the existing `com.sachmuch.app` identifier, configure an Expo/EAS project if using cloud builds, and supply release API settings. App Store metadata, privacy disclosures and device signing remain release-owner steps. No account, billing integration or submission has been created automatically.
+
+## Xcode 27 startup compatibility
+
+Keep `expo-build-properties` configured with `ios.enableSceneSupport: true`. SDK 57 defaults to the old application lifecycle, which crashes at startup when built with Xcode 27 for iOS 27. Regenerate native files after changing this option. See [Expo’s migration guidance](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md#staying-on-sdk-57-with-xcode-27).
+
+The dedicated `apps/mobile/preview.js` entry provides explicitly labelled sample data through a context. Normal builds still use `index.js`; their production sample-mode guard is unchanged.
+
+For a USB-installed offline debug preview, point the generated AppDelegate debug bundle URL to `Bundle.main.url(forResource: "main", withExtension: "jsbundle")`. After CocoaPods finishes, create `ios/.xcode.env.updates` with:
+
+```sh
+unset SKIP_BUNDLING
+export ENTRY_FILE="$PROJECT_ROOT/preview.js"
+export EXTRA_PACKAGER_ARGS="--dev false"
+export SKIP_BUNDLING_METRO_IP=1
+```
+
+The production JavaScript flag is required: Expo's development JavaScript initializes server-only websocket tools and fails when embedded without Metro. Build the Debug native target with the selected signing team, then install over USB. These generated-native overrides are cleared by prebuild. Normal release builds embed JavaScript automatically and use the live API origin.

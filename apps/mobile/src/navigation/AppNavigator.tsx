@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext } from "react";
+import { PreviewFactsContext } from "../preview/context";
 import { StyleSheet, View } from "react-native";
 import {
   NavigationContainer,
@@ -20,7 +21,8 @@ const sampleFacts =
     ? require("../preview/facts").previewFacts
     : undefined;
 function DiscoverEntry() {
-  return <DiscoverScreen previewFacts={sampleFacts} />;
+  const offlinePreview = useContext(PreviewFactsContext);
+  return <DiscoverScreen previewFacts={offlinePreview ?? sampleFacts} />;
 }
 const Tab = createBottomTabNavigator();
 const icons: Record<string, IconName> = {

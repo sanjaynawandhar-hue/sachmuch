@@ -27,3 +27,11 @@ No signed physical-device build, TestFlight upload or App Store submission has b
 4. Preserved the existing web homepage's database requirement. Cost: full web production build and live integration remain dependent on provisioned Postgres.
 
 See [MOBILE.md](MOBILE.md) for launch and release setup.
+
+## Physical-device startup investigation
+
+The initial USB installation succeeded, but launch immediately crashed. The iPhone report `Sachmuch-2026-10-15-104059.ips` identified `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`; the earlier simulator report showed the same failure. Thus the earlier simulator startup limitation was an application lifecycle incompatibility, not only simulator boot instability.
+
+Enabled Expo's SDK 57 `expo-build-properties` option `ios.enableSceneSupport`. Regenerated native output now declares `EXExpoAppSceneDelegate` and makes AppDelegate conform to `ExpoReactNativeFactoryProvider`, with window creation delegated to the scene. The same failure was reproduced on-device before this change. All 41 mobile tests and mobile type checking passed after the configuration change. Physical-device reinstallation verification is recorded below when complete.
+
+The first corrected native build exposed a second startup error: Expo development JavaScript refused to initialize devtools websocket connections in an embedded environment. Added a dedicated `preview.js` entry and bundled it with `--dev false`, preserving the standard production entry's live-feed behavior. Rebuilt, signed, and installed over USB. On 2026-10-15 at 10:48 IST, a device screenshot confirmed the rendered Discover screen, labelled sample preview, source/save/share controls, and all three tabs on the physical iPhone 14 Pro Max. Launch monitoring showed no termination during this check. All 41 mobile tests passed again; type checking passed. This verifies startup and visible rendering, not the full interaction/accessibility matrix.
