@@ -34,6 +34,7 @@ const en = {
   emptyBody:
     "No facts are available in this language yet. Try English or refresh later.",
   retry: "Try again",
+  cachedFeed: "Showing downloaded facts. Connect to refresh; images may be unavailable.",
   error: "We couldn’t load new facts.",
   errorBody:
     "Check your connection and try again. Your saved facts are still here.",
@@ -114,6 +115,7 @@ const hi: typeof en = {
   emptyBody:
     "इस भाषा में अभी तथ्य उपलब्ध नहीं हैं। अंग्रेज़ी चुनें या बाद में कोशिश करें।",
   retry: "फिर कोशिश करें",
+  cachedFeed: "डाउनलोड किए तथ्य दिख रहे हैं। नए तथ्यों के लिए इंटरनेट जोड़ें; चित्र उपलब्ध न हों।",
   error: "नए तथ्य लोड नहीं हो सके।",
   errorBody:
     "इंटरनेट जाँचें और फिर कोशिश करें। सहेजे हुए तथ्य अभी भी उपलब्ध हैं।",

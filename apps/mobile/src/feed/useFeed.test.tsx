@@ -69,3 +69,40 @@ test("paged feed deduplicates, follows cursor and stops at the final page", asyn
   await act(() => result.current.loadMore());
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });
+
+jest.mock("@react-native-async-storage/async-storage", () => ({ getItem: async () => null, setItem: async () => {} }));
+test("a downloaded feed survives reopening while the network is unavailable", async () => {
+  let saved: any = null;
+  const cache = {load: async () => saved, save: async (_origin: string, page: any) => { saved = page; }};
+  global.fetch = jest.fn(async () => response("downloaded"));
+  const first = await renderHook(() => useFeed("https://example.org", true, cache));
+  await waitFor(() => expect(first.result.current.facts[0]?.en.id).toBe("downloaded"));
+  await first.unmount();
+  global.fetch = jest.fn(async () => { throw Error("Offline"); });
+  const reopened = await renderHook(() => useFeed("https://example.org", true, cache));
+  await waitFor(() => expect(reopened.result.current.error).toBe("unavailable"));
+  expect(reopened.result.current.facts[0]?.en.id).toBe("downloaded");
+});
+test("a slow cache read cannot replace a fresh server response", async () => {
+  let release!: (value: any) => void;
+  const cache = {load: () => new Promise<any>((resolve) => {release = resolve;}), save: async () => {}};
+  global.fetch = jest.fn(async () => response("fresh"));
+  const view = await renderHook(() => useFeed("https://example.org", true, cache));
+  await waitFor(() => expect(view.result.current.facts[0]?.en.id).toBe("fresh"));
+  await act(() => release({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual]}));
+  expect(view.result.current.facts[0]?.en.id).toBe("fresh");
+});
+
+test("returning to the app retries a failed connection", async () => {
+  const {AppState} = require("react-native");
+  let change!: (state: string) => void;
+  const listener = jest.spyOn(AppState, "addEventListener").mockImplementation((_event: any, callback: any) => {change = callback; return {remove: jest.fn()};});
+  global.fetch = jest.fn().mockRejectedValueOnce(Error("No data")).mockResolvedValueOnce(response("reconnected"));
+  const view = await renderHook(() => useFeed("https://example.org"));
+  await waitFor(() => expect(view.result.current.error).toBe("unavailable"));
+  await act(() => change("active"));
+  await waitFor(() => expect(view.result.current.facts[0]?.en.id).toBe("reconnected"));
+  expect(view.result.current.error).toBeNull();
+  await view.unmount();
+  listener.mockRestore();
+});

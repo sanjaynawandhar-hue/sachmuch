@@ -56,3 +56,11 @@ No TestFlight upload or App Store submission was performed. The backend remains 
 - Workspace typechecks pass; mobile rechecked after new regression tests.
 - Staged deployment dpl_8jidMDH53TuJ6zKa2h6q8Pj8FiJk returns 100 + 53 unique facts, with null final cursor. Promoted to production.
 - Automated tests validate audio playback calls and lifecycle. Physical listening volume still depends on the iPhone's system volume.
+
+### 2026-10-17 connectivity investigation
+
+The production endpoint returned HTTP 503 independently of the phone. Vercel's DATABASE_URL UI still showed August 24 as its update date, before the user's database password reset. The installed Release app uses public HTTPS, not a home/LAN Metro address. Live recovery requires the corrected Vercel secret and redeployment; credentials remain user-entered.
+
+Added an origin-specific AsyncStorage cache of the last validated first feed page, independent of saved facts and preferences. On reopening, cached text remains readable if the server/network fails. Remote images still require connectivity or the OS image cache. A successful server response wins over delayed cache reads; cache write failures do not prevent online reading. Returning to the foreground retries a previously failed request. This requires one successful download before offline first-page reading is available.
+
+53 mobile tests and TypeScript checks pass. Review found no actionable regressions. Native installation and real cellular verification remain pending.

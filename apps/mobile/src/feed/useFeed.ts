@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
+import { feedCache, type FeedCache } from "./cache";
 import type { BilingualMobileFact } from "@sachmuch/core";
 import { fetchFeed } from "./client";
-export function useFeed(origin: string, enabled = true) {
+export function useFeed(origin: string, enabled = true, cache: FeedCache = feedCache) {
   const [facts, setFacts] = useState<BilingualMobileFact[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -9,6 +11,7 @@ export function useFeed(origin: string, enabled = true) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const generation = useRef(0);
+  const loadedOrigin = useRef(origin);
   const cursor = useRef<string | null>(null);
   const busy = useRef(false);
   const [hasMore, setHasMore] = useState(false);
@@ -17,6 +20,7 @@ export function useFeed(origin: string, enabled = true) {
       setStatus("ready");
       return;
     }
+    if (loadedOrigin.current !== origin) { setFacts([]); loadedOrigin.current = origin; }
     const id = ++generation.current;
     const controller = new AbortController();
     cursor.current = null;
@@ -24,9 +28,18 @@ export function useFeed(origin: string, enabled = true) {
     setHasMore(false);
     setStatus("loading");
     setError(null);
+    let fresh = false;
+    void cache.load(origin).then((page) => {
+      if (page && !fresh && id === generation.current) {
+        setFacts((previous) => previous.length ? previous : page.facts);
+        setStatus("ready");
+      }
+    }).catch(() => {});
     fetchFeed(origin, { signal: controller.signal, development: __DEV__, paged: true })
       .then((feed) => {
         if (id === generation.current) {
+          fresh = true;
+          void cache.save(origin, feed).catch(() => {});
           cursor.current = feed.nextCursor ?? null;
           setHasMore(!!cursor.current);
           setFacts(feed.facts);
@@ -43,8 +56,17 @@ export function useFeed(origin: string, enabled = true) {
       generation.current++;
       controller.abort();
     };
-  }, [origin, attempt, enabled]);
+  }, [origin, attempt, enabled, cache]);
   const refresh = useCallback(() => setAttempt((n) => n + 1), []);
+  const latestError = useRef(error);
+  latestError.current = error;
+  useEffect(() => {
+    if (!enabled) return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active" && latestError.current) refresh();
+    });
+    return () => subscription.remove();
+  }, [enabled, refresh]);
   const loadMore = useCallback(async () => {
     if (!enabled || busy.current || !cursor.current) return;
     busy.current = true;

@@ -223,7 +223,7 @@ export function DiscoverScreen({
       )}
       {!previewFacts && feed.error && facts.length > 0 && (
         <View style={{ gap: 6, marginBottom: 8 }}>
-          <Notice text={s.error} />
+          <Notice text={s.cachedFeed} />
           <Action label={s.retry} onPress={feed.refresh} />
         </View>
       )}
