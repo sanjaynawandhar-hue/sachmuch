@@ -1,3 +1,4 @@
+import { isDiscoveryFact } from "@sachmuch/core";
 import React, { useState, useRef } from "react";
 import { FlatList, Pressable, Share, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -24,7 +25,8 @@ export function SavedScreen() {
   const [english, setEnglish] = useState(false);
   const [source, setSource] = useState<MobileFact | null>(null);
   const [error, setError] = useState<"save" | "action" | null>(null);
-  const entry = state.saved.find((e) => e.fact.en.id === id);
+  const visibleSaved = state.saved.filter(e => isDiscoveryFact(e.fact.en));
+  const entry = visibleSaved.find((e) => e.fact.en.id === id);
   const lang = english ? "en" : state.preferences.language;
   const fact = entry?.fact[lang];
   async function remove() {
@@ -130,7 +132,7 @@ export function SavedScreen() {
             title={s.savedTitle}
             subtitle={s.savedSubtitle}
           />
-          {state.saved.length > 0 ? (
+          {visibleSaved.length > 0 ? (
             <>
               <Text
                 style={{
@@ -140,10 +142,10 @@ export function SavedScreen() {
                   marginBottom: 18,
                 }}
               >
-                {state.saved.length} {s.count}
+                {visibleSaved.length} {s.count}
               </Text>
               <FlatList
-                data={state.saved}
+                data={visibleSaved}
                 keyExtractor={(e) => e.fact.en.id}
                 contentContainerStyle={{ gap: 14, paddingBottom: 20 }}
                 renderItem={({ item }) => {

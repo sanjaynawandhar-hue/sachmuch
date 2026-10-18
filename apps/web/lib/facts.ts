@@ -1,4 +1,5 @@
 import 'server-only';
+import { editorialFacts } from '@sachmuch/core';
 import postgres from 'postgres';
 import type { FactCardData } from '@sachmuch/ui';
 
@@ -71,12 +72,13 @@ export async function getFeedFacts(limit = 300, page?: { after?: string }): Prom
          LIMIT 1
       ) img ON true
      WHERE f.status = 'live'
+       AND c.slug NOT IN ('bollywood', 'hollywood', 'actors-actresses')
        ${page?.after ? sql`AND f.id > ${page.after}::uuid` : sql``}
      ORDER BY ${page ? sql`f.id` : sql`f.boost_count DESC, f.quality DESC, f.id`}
      LIMIT ${limit}
   `;
 
-  return rows.map((r) => {
+  const databaseFacts = rows.map((r) => {
     const shared = {
       id: r.id,
       categoryId: r.category_id,
@@ -129,4 +131,9 @@ export async function getFeedFacts(limit = 300, page?: { after?: string }): Prom
       },
     };
   });
+  const extras = editorialFacts.filter(f => !page?.after || f.en.id > page.after);
+  const combined = [...extras, ...databaseFacts];
+  if (page) combined.sort((a,b) => a.en.id.localeCompare(b.en.id));
+  return combined.slice(0, limit);
+
 }

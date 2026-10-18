@@ -1,0 +1,23 @@
+import React from 'react';
+import {Text} from 'react-native';
+import {render,screen,fireEvent} from '@testing-library/react-native';
+import {CardContent} from './CardContent';
+test('short cards leave swipes to the pager; long cards hand off only from their boundaries', async()=>{
+ const move=jest.fn();
+ await render(<CardContent onBoundary={move}><Text>Complete fact</Text></CardContent>);
+ const content=screen.getByTestId('card-content');
+ await fireEvent(content,'layout',{nativeEvent:{layout:{height:400}}});
+ await fireEvent(content,'contentSizeChange',300,300);
+ expect(content.props.scrollEnabled).toBe(false);
+ await fireEvent(content,'contentSizeChange',300,700);
+ expect(content.props.scrollEnabled).toBe(true);
+ await fireEvent(content,'scroll',{nativeEvent:{contentOffset:{y:300}}});
+ await fireEvent(content,'touchStart',{nativeEvent:{pageY:300}});
+ await fireEvent(content,'touchEnd',{nativeEvent:{pageY:220}});
+ expect(move).toHaveBeenCalledWith(1);
+ move.mockClear();
+ await fireEvent(content,'scroll',{nativeEvent:{contentOffset:{y:100}}});
+ await fireEvent(content,'touchStart',{nativeEvent:{pageY:300}});
+ await fireEvent(content,'touchEnd',{nativeEvent:{pageY:220}});
+ expect(move).not.toHaveBeenCalled();
+});

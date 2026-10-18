@@ -1,9 +1,10 @@
+import { isDiscoveryFact } from "@sachmuch/core";
 import type { BilingualMobileFact, MobileFact } from "@sachmuch/core";
 export function selectLanguageFacts(
   facts: BilingualMobileFact[],
   language: "en" | "hi",
 ): MobileFact[] {
-  return facts.flatMap((f) => (f[language] ? [f[language]!] : []));
+  return facts.filter(f => isDiscoveryFact(f.en)).flatMap((f) => (f[language] ? [f[language]!] : []));
 }
 export function resolveCurrentId(
   facts: MobileFact[],

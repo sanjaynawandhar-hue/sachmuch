@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import {
   buildFeed,
+  balanceTopics,
+  isDiscoveryFact,
   type BilingualMobileFact,
   type MobileFact,
 } from "@sachmuch/core";
@@ -51,9 +53,9 @@ export function DiscoverScreen({
     const current = new Map(data.map((f) => [f.en.id, f]));
     const retained = orderCache.current.filter((f) => current.has(f.en.id)).map((f) => current.get(f.en.id)!);
     const previous = new Set(retained.map((f) => f.en.id));
-    const fresh = data.filter((f) => !previous.has(f.en.id));
+    const fresh = data.filter((f) => !previous.has(f.en.id) && isDiscoveryFact(f.en));
     const byId = new Map(fresh.map((f) => [f.en.id, f]));
-    const result = [...retained, ...buildFeed(fresh.map((f) => f.en), affinity.current, fresh.length).map((f) => byId.get(f.id)!)];
+    const result = [...retained, ...balanceTopics(buildFeed(fresh.map((f) => f.en), affinity.current, fresh.length)).map((f) => byId.get(f.id)!)];
     orderCache.current = result;
     return result;
   }, [data]);

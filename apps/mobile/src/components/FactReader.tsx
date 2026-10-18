@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 import type { MobileFact } from "@sachmuch/core";
 import { strings } from "../i18n";
 import { useAppTheme } from "../theme";
@@ -126,9 +126,7 @@ export function FactReader({
             gap: 4,
           }}
         >
-          <Pressable accessibilityRole="button" accessibilityLabel={s.sources} onPress={onSource} hitSlop={10}><Text style={{ color: t.muted, fontSize: 10, textDecorationLine: "underline" }}>
-            {s.sourced}: {fact.publisher}
-          </Text></Pressable>
+
           {fact.attributionText && (
             <Text style={{ color: t.muted, fontSize: 12 }}>
               {fact.attributionText}

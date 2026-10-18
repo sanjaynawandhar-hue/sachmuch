@@ -14,7 +14,7 @@ jest.mock("../theme", () => ({
     reduceMotion: false,
   }),
 }));
-test("native vertical paging selects the settled page and opens full text separately", async () => {
+test("native vertical paging selects the settled page with complete text and no extra reading controls", async () => {
   const onIndexChange = jest.fn();
   const facts = [
     bilingual.en,
@@ -42,8 +42,7 @@ test("native vertical paging selects the settled page and opens full text separa
     nativeEvent: { contentOffset: { y: 600 } },
   });
   expect(onIndexChange).toHaveBeenCalledWith(1);
-  await fireEvent.press(
-    screen.getAllByRole("button", { name: "Read full fact" })[0]!,
-  );
-  expect(screen.getByTestId("full-fact-reader")).toBeTruthy();
+  expect(screen.queryAllByRole("button", { name: "Read full fact" })).toHaveLength(0);
+  expect(screen.queryAllByRole("button", { name: "Sources" })).toHaveLength(0);
+  expect(screen.getAllByText(bilingual.en.body)[0]!.props.numberOfLines).toBeUndefined();
 });

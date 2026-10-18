@@ -19,7 +19,7 @@ const wrap = (child: React.ReactNode) => (
     {child}
   </AppStateProvider>
 );
-test("readable fact exposes source, saved state, and actions", async () => {
+test("readable fact exposes saved state, and actions", async () => {
   const save = jest.fn();
   await render(
     wrap(
@@ -34,7 +34,7 @@ test("readable fact exposes source, saved state, and actions", async () => {
     ),
   );
   await screen.findByText("A surprising fact");
-  expect(screen.getByText("Sourced from: Example publisher")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Sources" })).toBeNull();
   expect(
     screen.getByRole("button", { name: "Remove saved fact" }),
   ).toBeTruthy();

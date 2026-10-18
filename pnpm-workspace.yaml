@@ -3,3 +3,5 @@ packages:
   - 'packages/*'
   - 'connectors'
   - 'pipeline'
+patchedDependencies:
+  expo-modules-jsi@57.1.2: patches/expo-modules-jsi@57.1.2.patch

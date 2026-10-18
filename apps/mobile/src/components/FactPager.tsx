@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Pressable,
   Image,
-  Modal,
-  ScrollView,
   Text,
   View,
   useWindowDimensions,
@@ -12,11 +9,11 @@ import {
 import type { MobileFact } from "@sachmuch/core";
 import { useAppTheme } from "../theme";
 import { strings } from "../i18n";
+import { CardContent } from "./CardContent";
 import { Action } from "./Surface";
-import { FactReader } from "./FactReader";
 
 /** Native paging keeps finger tracking and deceleration off the JS thread.
- * Full text opens separately, so a nested text scroller cannot steal feed swipes. */
+ * The complete fact is readable on its card. */
 export function FactPager({
   facts,
   index,
@@ -44,7 +41,6 @@ export function FactPager({
   const s = strings(language);
   const { height: windowHeight } = useWindowDimensions();
   const [height, setHeight] = useState(Math.max(240, windowHeight - 240));
-  const [reading, setReading] = useState<MobileFact | null>(null);
   const list = useRef<FlatList<MobileFact>>(null);
   const settled = useRef(index);
   const previousFacts = useRef(facts);
@@ -104,7 +100,7 @@ export function FactPager({
             const y = e.nativeEvent.contentOffset.y;
             if (Math.abs(y / height - Math.round(y / height)) < 0.01) settle(y);
           }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index: cardIndex }) => (
             <View style={{ height, paddingBottom: 10 }}>
               <View
                 style={{
@@ -116,9 +112,7 @@ export function FactPager({
                   overflow: "hidden",
                 }}
               >
-                <View
-                  style={{ flex: 1, padding: 22, gap: 14, overflow: "hidden" }}
-                >
+                <CardContent onBoundary={(delta) => onIndexChange(Math.max(0, Math.min(facts.length - 1, cardIndex + delta)))}>
                   <Text
                     numberOfLines={1}
                     style={{
@@ -133,7 +127,6 @@ export function FactPager({
                   </Text>
                   <Text
                     accessibilityRole="header"
-                    numberOfLines={3}
                     style={{
                       color: t.ink,
                       fontSize: height < 450 ? 24 : 29,
@@ -157,9 +150,6 @@ export function FactPager({
                     />
                   )}
                   <Text
-                    numberOfLines={
-                      height < 450 ? 3 : item.image && height > 540 ? 3 : 6
-                    }
                     style={{
                       color: t.muted,
                       fontSize: 16,
@@ -177,19 +167,8 @@ export function FactPager({
                       {item.image.credit} {item.image.licence}
                     </Text>
                   )}
-                  <View style={{ marginTop: "auto", gap: 8 }}>
-                    <Pressable accessibilityRole="button" accessibilityLabel={s.sources} onPress={() => onSource(item)} hitSlop={10}><Text
-                      numberOfLines={1}
-                      style={{ color: t.muted, fontSize: 10, textDecorationLine: "underline" }}
-                    >
-                      {s.sourced}: {item.publisher}
-                    </Text></Pressable>
-                    <Action
-                      label={s.readFull}
-                      onPress={() => setReading(item)}
-                    />
-                  </View>
-                </View>
+                  {item.attributionText && <Text style={{color:t.muted,fontSize:10}}>{item.attributionText}</Text>}
+                </CardContent>
                 <View
                   style={{
                     flexDirection: "row",
@@ -221,50 +200,7 @@ export function FactPager({
           )}
         />
       )}
-      <Modal
-        visible={!!reading}
-        animationType={t.reduceMotion ? "none" : "slide"}
-        presentationStyle="pageSheet"
-        onRequestClose={() => setReading(null)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: t.bg,
-            padding: 18,
-            paddingTop: 24,
-          }}
-        >
-          <View style={{ alignItems: "flex-end", paddingBottom: 12 }}>
-            <Action
-              label={s.close}
-              icon="close"
-              onPress={() => setReading(null)}
-            />
-          </View>
-          <ScrollView
-            testID="full-fact-reader"
-            contentContainerStyle={{ paddingBottom: 32 }}
-          >
-            {reading && (
-              <FactReader
-                expanded
-                fact={reading}
-                language={language}
-                loved={lovedIds.includes(reading.id)}
-                onLove={() => onLove?.(reading)}
-                saved={savedIds.includes(reading.id)}
-                onSave={() => onSave(reading)}
-                onShare={() => onShare(reading)}
-                onSource={() => {
-                  setReading(null);
-                  onSource(reading);
-                }}
-              />
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+
     </View>
   );
 }
