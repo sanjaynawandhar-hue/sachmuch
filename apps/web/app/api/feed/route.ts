@@ -6,6 +6,12 @@ export async function GET(request?: Request) {
     const after = url.searchParams.get("after") ?? undefined;
     if (after && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(after))
       return Response.json({error: {code: "INVALID_CURSOR"}}, {status: 400});
+    if (url?.searchParams.get("edition") === "fun") {
+      const {editorialFacts, parseFeedEnvelope} = await import("@sachmuch/core");
+      const rows=editorialFacts.filter(f=>!after || f.en.id>after.toLowerCase()).sort((a,b)=>a.en.id.localeCompare(b.en.id));
+      const facts=rows.slice(0,100);
+      return Response.json(parseFeedEnvelope({version:1,fetchedAt:new Date().toISOString(),facts,nextCursor:rows.length>100?facts.at(-1)!.en.id:null}),{headers:{"Cache-Control":"no-store"}});
+    }
     try {
       const { getFeedFacts } = await import("../../../lib/facts");
       const { parseFeedEnvelope } = await import("@sachmuch/core");

@@ -28,3 +28,14 @@ it("redacts database failures", async () => {
   expect(response.status).toBe(503);
   expect(await response.json()).toEqual({error: {code: "FEED_UNAVAILABLE"}});
 });
+it('serves the short fun edition without database statistics or a database dependency', async()=>{
+ read.mockRejectedValue(Error('database unavailable'));
+ const response=await GET(new Request('https://example.org/api/feed?paged=1&edition=fun'));
+ const page=await response.json();
+ expect(response.status).toBe(200);
+ expect(page.facts.length).toBeGreaterThanOrEqual(20);
+ expect(page.facts.every((f:any)=>f.en.templateId.startsWith('editorial-') && f.hi && f.en.body.length<350)).toBe(true);
+ expect(read).not.toHaveBeenCalled();
+ const last=await GET(new Request(`https://example.org/api/feed?paged=1&edition=fun&after=${page.facts.at(-1).en.id}`));
+ expect((await last.json()).facts).toHaveLength(0);
+});

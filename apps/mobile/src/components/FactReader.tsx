@@ -3,6 +3,7 @@ import { Image, ScrollView, Text, View } from "react-native";
 import type { MobileFact } from "@sachmuch/core";
 import { strings } from "../i18n";
 import { useAppTheme } from "../theme";
+import { LoveButton } from "./LoveButton";
 import { Action } from "./Surface";
 export function FactReader({
   expanded = false,
@@ -145,7 +146,7 @@ export function FactReader({
         }}
       >
         <View style={{ flex: 1 }}>
-          {onLove && <Action compact label={loved ? s.unlove : s.love} selected={loved} icon="heart" onPress={onLove} />}
+          {onLove && <LoveButton loved={loved} language={language} onPress={onLove} />}
         </View>
         <Action
           compact

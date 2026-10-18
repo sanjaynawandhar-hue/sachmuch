@@ -8,7 +8,7 @@ export interface FeedCache {
 /** Cache only validated public facts, separately from personal preferences. */
 export function createFeedCache(storage: StorageAdapter): FeedCache {
   let queue: Promise<unknown> = Promise.resolve();
-  const key = (origin: string) => `sachmuch.feed.v1:${origin}`;
+  const key = (origin: string) => `sachmuch.feed.fun.v1:${origin}`;
   return {
     async load(origin) {
       try {

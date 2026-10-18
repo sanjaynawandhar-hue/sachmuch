@@ -8,6 +8,6 @@ test("cache survives a new instance, isolates servers and ignores corrupt data",
   await createFeedCache(storage).save("https://one.example",page);
   expect(await createFeedCache(storage).load("https://one.example")).toEqual(page);
   expect(await createFeedCache(storage).load("https://two.example")).toBeNull();
-  data.set("sachmuch.feed.v1:https://one.example", "broken");
+  data.set("sachmuch.feed.fun.v1:https://one.example", "broken");
   expect(await createFeedCache(storage).load("https://one.example")).toBeNull();
 });

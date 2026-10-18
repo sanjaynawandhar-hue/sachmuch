@@ -25,7 +25,7 @@ export async function fetchFeed(
   options: { signal?: AbortSignal; development: boolean; paged?: boolean; after?: string },
 ): Promise<FeedEnvelope> {
   const target = new URL(feedUrl(origin, options.development));
-  if (options.paged) target.searchParams.set("paged", "1");
+  if (options.paged) { target.searchParams.set("paged", "1"); target.searchParams.set("edition", "fun"); }
   if (options.after) target.searchParams.set("after", options.after);
   const url = target.toString();
   if (options.signal?.aborted) throw Error("Aborted");

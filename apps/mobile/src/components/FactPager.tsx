@@ -9,6 +9,7 @@ import {
 import type { MobileFact } from "@sachmuch/core";
 import { useAppTheme } from "../theme";
 import { strings } from "../i18n";
+import { LoveButton } from "./LoveButton";
 import { CardContent } from "./CardContent";
 import { Action } from "./Surface";
 
@@ -82,8 +83,7 @@ export function FactPager({
           keyExtractor={(f) => f.id}
           pagingEnabled
           horizontal={false}
-          decelerationRate="fast"
-          disableIntervalMomentum
+          decelerationRate="normal"
           showsVerticalScrollIndicator={false}
           bounces={false}
           initialNumToRender={2}
@@ -112,7 +112,7 @@ export function FactPager({
                   overflow: "hidden",
                 }}
               >
-                <CardContent onBoundary={(delta) => onIndexChange(Math.max(0, Math.min(facts.length - 1, cardIndex + delta)))}>
+                <CardContent compact={height < 480}>
                   <Text
                     numberOfLines={1}
                     style={{
@@ -127,10 +127,11 @@ export function FactPager({
                   </Text>
                   <Text
                     accessibilityRole="header"
+                    adjustsFontSizeToFit minimumFontScale={0.8}
                     style={{
                       color: t.ink,
-                      fontSize: height < 450 ? 24 : 29,
-                      lineHeight: language === "hi" ? 39 : 35,
+                      fontSize: height < 480 ? 21 : 29,
+                      lineHeight: height < 480 ? 28 : language === "hi" ? 39 : 35,
                       fontWeight: "600",
                       letterSpacing: language === "hi" ? 0 : -0.7,
                     }}
@@ -150,10 +151,11 @@ export function FactPager({
                     />
                   )}
                   <Text
+                    adjustsFontSizeToFit minimumFontScale={0.75}
                     style={{
                       color: t.muted,
-                      fontSize: 16,
-                      lineHeight: language === "hi" ? 28 : 26,
+                      fontSize: height < 480 ? 14 : 16,
+                      lineHeight: height < 480 ? 21 : language === "hi" ? 28 : 26,
                       flexShrink: 1,
                     }}
                   >
@@ -179,7 +181,7 @@ export function FactPager({
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Action compact icon="heart" selected={lovedIds.includes(item.id)} label={lovedIds.includes(item.id) ? s.unlove : s.love} onPress={() => onLove?.(item)} />
+                    <LoveButton loved={lovedIds.includes(item.id)} language={language} onPress={() => onLove?.(item)} />
                   </View>
                   <Action
                     compact

@@ -65,7 +65,7 @@ test("paged feed deduplicates, follows cursor and stops at the final page", asyn
   await act(() => result.current.loadMore());
   expect(result.current.facts.map((f) => f.en.id)).toEqual([bilingual.en.id, "second"]);
   expect(result.current.hasMore).toBe(false);
-  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/feed?paged=1&after=${cursor}`, expect.anything());
+  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/feed?paged=1&edition=fun&after=${cursor}`, expect.anything());
   await act(() => result.current.loadMore());
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });

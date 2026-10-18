@@ -64,3 +64,14 @@ The production endpoint returned HTTP 503 independently of the phone. Vercel's D
 Added an origin-specific AsyncStorage cache of the last validated first feed page, independent of saved facts and preferences. On reopening, cached text remains readable if the server/network fails. Remote images still require connectivity or the OS image cache. A successful server response wins over delayed cache reads; cache write failures do not prevent online reading. Returning to the foreground retries a previously failed request. This requires one successful download before offline first-page reading is available.
 
 53 mobile tests and TypeScript checks pass. Review found no actionable regressions. Native installation and real cellular verification remain pending.
+
+## 2026-10-18 — fun edition, native paging and love feedback
+
+- Removed the nested card ScrollView and its boundary gesture handler. Native FlatList owns vertical paging, with normal deceleration. Short cards use adaptive typography/padding for reduced available space.
+- Personal love uses a filled pink heart and a 650ms native-driver bounce/sprinkle on the false-to-true persisted state transition. Existing loves do not replay animations; Reduce Motion suppresses animation.
+- The iPhone requests `edition=fun`: 20 concise, bilingual editorial facts, replacing the statistics-heavy discovery stream. The endpoint does not require the database. This is a deliberately finite curated edition, not millions of facts or an automatic importer expansion. Source URLs are retained in the content records.
+- Changed cache namespace so older long statistics cannot reappear as the new edition offline. Existing personal saved/loved records are retained.
+- Full repository tests: 241 passed (mobile 56, core 62, web 8, templates 40, connectors 7, UI 18, DB 9, pipeline 41). Mobile/web typechecks passed. Targeted card/love tests passed again after adaptive layout changes.
+- Final Release build succeeded; installed and launched on physical iPhone. Screenshot `/private/tmp/sachmuch-fun-final.png` shows a complete short fact and no inner scrollbar.
+- Staged endpoint verified 20 distinct bilingual editorial records, then promoted deployment `dpl_4ebfF64U1Qk9SAfJx6sRJtNHVmpb`. Public fun endpoint returned HTTP 200.
+- Asked the user to assess physical swipe feel and sprinkle appearance; automated checks establish logic and layout, not subjective smoothness.
