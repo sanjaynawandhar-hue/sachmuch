@@ -1,3 +1,4 @@
+import {upgradeLegacyFact} from '@sachmuch/core';
 import { createAppStore, type StorageAdapter } from "./storage";
 import { bilingual, fact } from "../test/fixtures";
 function memory(
@@ -13,7 +14,7 @@ function memory(
     },
   };
 }
-const saved = { fact: bilingual, savedAt: "2026-10-14T00:00:00.000Z" };
+const saved = { fact: upgradeLegacyFact(bilingual), savedAt: "2026-10-14T00:00:00.000Z" };
 test("defaults follow system appearance and reads do not write", async () => {
   const db = memory();
   const s = await createAppStore(db).load();
@@ -37,7 +38,7 @@ test("hydrates Hindi before any writes and saves, reloads, removes a bilingual b
   }));
   const reloaded = createAppStore(db);
   expect((await reloaded.load()).preferences.language).toBe("hi");
-  expect((await reloaded.load()).saved[0]?.fact.hi?.hook).toBe("एक रोचक तथ्य");
+  expect((await reloaded.load()).saved[0]?.fact.texts.hi?.hook).toBe("एक रोचक तथ्य");
   await reloaded.update((s) => ({ ...s, saved: [] }));
   expect((await createAppStore(db).load()).saved).toEqual([]);
 });
@@ -120,4 +121,16 @@ test("hydrates old installs with music and love defaults and validates persisted
  expect(state.preferences.music).toBe(true);
  expect(state.preferences.musicVolume).toBe(0.12);
  expect(state.lovedIds).toEqual(['fact-a']);
+});
+test('legacy migration preserves original bytes and love IDs if v2 persistence fails',async()=>{
+ const legacy=JSON.stringify({version:1,saved:[{fact:bilingual,savedAt:'2026-10-14T00:00:00Z'}],lovedIds:['one']});
+ const data=new Map([['sachmuch.app.v1',legacy]]);
+ const adapter={getItem:async(k:string)=>data.get(k)??null,setItem:async()=>{throw Error('disk full');}};
+ const store=createAppStore(adapter);
+ const state=await store.load();
+ expect(state.saved[0]?.fact.id).toBe('one');
+ expect(state.lovedIds).toEqual(['one']);
+ await expect(store.update(s=>s)).rejects.toThrow('disk full');
+ expect(data.get('sachmuch.app.v1')).toBe(legacy);
+ expect(data.has('sachmuch.app.v2')).toBe(false);
 });

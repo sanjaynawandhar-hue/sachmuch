@@ -1,4 +1,4 @@
-import { isWebUrl, type MobileFact } from './mobile-feed';
+import { parseBilingualFact, isWebUrl, type MobileFact } from './mobile-feed';
 
 export type Language = 'en' | 'hi';
 export type FactText = { hook: string; body: string };
@@ -83,4 +83,10 @@ export function parseFeedV2(input: unknown): FeedV2 {
   const facts = input.facts.map(parseFactV2);
   if (new Set(facts.map(f => f.id)).size !== facts.length) throw Error('Duplicate fact');
   return {version: 2, fetchedAt: input.fetchedAt, facts, nextCursor: input.nextCursor as string | null, snapshotId: input.snapshotId, totalEligible: input.totalEligible as number};
+}
+
+export function upgradeLegacyFact(input:unknown):FactV2 {
+ const {en,hi}=parseBilingualFact(input);
+ return parseFactV2({...en,originalLanguage:'en',knowledgeKind:'fact',
+  texts:{en:{hook:en.hook,body:en.body},...(hi?{hi:{hook:hi.hook,body:hi.body}}:{})}});
 }

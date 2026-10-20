@@ -1,3 +1,4 @@
+import {upgradeLegacyFact} from '@sachmuch/core';
 import React from "react";
 import {
   act,
@@ -34,9 +35,9 @@ beforeEach(() => {
       ({
         ok: true,
         json: async () => ({
-          version: 1,
+          version: 2, snapshotId: "test", totalEligible: 100, nextCursor: null,
           fetchedAt: "2026-10-14T00:00:00Z",
-          facts: [bilingual],
+          facts: [upgradeLegacyFact(bilingual)],
         }),
       }) as Response,
   );
@@ -90,9 +91,9 @@ test("language can switch while fetch is pending", async () => {
   done({
     ok: true,
     json: async () => ({
-      version: 1,
+      version: 2, snapshotId: "test", totalEligible: 100, nextCursor: null,
       fetchedAt: "2026-10-14T00:00:00Z",
-      facts: [bilingual],
+      facts: [upgradeLegacyFact(bilingual)],
     }),
   } as Response);
   expect(await screen.findByText("एक रोचक तथ्य")).toBeTruthy();
@@ -123,18 +124,14 @@ test("saved copy can be removed and missing Hindi is explicit", async () => {
   await store.update((s) => ({
     ...s,
     preferences: { ...s.preferences, language: "hi" },
-    saved: [{ fact, savedAt: "2026-10-14T00:00:00Z" }],
+    saved: [{ fact: upgradeLegacyFact(fact), savedAt: "2026-10-14T00:00:00Z" }],
   }));
   await render(wrapper(<SavedScreen />, store));
   await fireEvent.press(await screen.findByText("A surprising fact"));
-  expect(
-    await screen.findByText("इस सहेजे तथ्य का हिन्दी अनुवाद नहीं है।"),
-  ).toBeTruthy();
+  expect(await screen.findByText('A longer explanation.')).toBeTruthy();
+  expect(await screen.findByText('EN')).toBeTruthy();
   await fireEvent.press(
-    screen.getByRole("button", { name: "अंग्रेज़ी में पढ़ें" }),
-  );
-  await fireEvent.press(
-    screen.getByRole("button", { name: "Remove saved fact" }),
+    screen.getByRole("button", { name: "सहेजा तथ्य हटाएँ" }),
   );
   expect(await screen.findByText("अपनी पहली खोज सहेजें।")).toBeTruthy();
 });
@@ -185,7 +182,7 @@ test("two rapid remove presses cannot restore a saved fact", async () => {
   await store.load();
   await store.update((s) => ({
     ...s,
-    saved: [{ fact: bilingual, savedAt: "2026-10-14T00:00:00Z" }],
+    saved: [{ fact: upgradeLegacyFact(bilingual), savedAt: "2026-10-14T00:00:00Z" }],
   }));
   await render(wrapper(<SavedScreen />, store));
   await fireEvent.press(await screen.findByText("A surprising fact"));
@@ -230,7 +227,7 @@ test("Hindi feed continues past consecutive pages without translations", async (
   const store = createAppStore({getItem: async () => null, setItem: async () => {}});
   await store.load();
   await store.update((s) => ({...s, preferences: {...s.preferences, language: "hi"}}));
-  const page = (facts: unknown[], n: number | null) => ({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts, nextCursor: n === null ? null : `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`})});
+  const page = (facts: unknown[], n: number | null) => ({ok: true, json: async () => ({version: 2, snapshotId: "test", totalEligible: 100, fetchedAt: "2026-10-14T00:00:00Z", facts: facts.map(upgradeLegacyFact), nextCursor: n === null ? null : `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`})});
   global.fetch = jest.fn()
     .mockResolvedValueOnce(page([bilingual], 1))
     .mockResolvedValueOnce(page([{en: {...fact.en, id: "two"}}], 2))
@@ -238,7 +235,10 @@ test("Hindi feed continues past consecutive pages without translations", async (
     .mockResolvedValueOnce(page([{en: {...bilingual.en, id: "four"}, hi: {...bilingual.hi!, id: "four", hook: "एक और खोज"}}], null));
   await render(wrapper(<DiscoverScreen origin="https://example.org" />, store));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
-  expect(await screen.findByText("एक और खोज")).toBeTruthy();
+  const list=screen.getByTestId('vertical-fact-list');
+  expect(list.props.data.map((f:any)=>f.id)).toEqual(['one','two','three','four']);
+  expect(list.props.data[1].displayLanguage).toBe('en');
+  expect(list.props.data[3].hook).toBe('एक और खोज');
 });
 
 test("refresh uses corrected contents for existing fact IDs", async () => {

@@ -1,4 +1,4 @@
-import { parseFeedEnvelope, type FeedEnvelope } from "@sachmuch/core";
+import { parseFeedV2, type FeedV2 } from "@sachmuch/core";
 function feedUrl(origin: string, development: boolean): string {
   const u = new URL(origin);
   const local =
@@ -18,14 +18,13 @@ function feedUrl(origin: string, development: boolean): string {
     u.hash
   )
     throw Error("Invalid API origin");
-  return new URL("/api/feed", u).toString();
+  return new URL("/api/v2/feed", u).toString();
 }
 export async function fetchFeed(
   origin: string,
   options: { signal?: AbortSignal; development: boolean; paged?: boolean; after?: string },
-): Promise<FeedEnvelope> {
+): Promise<FeedV2> {
   const target = new URL(feedUrl(origin, options.development));
-  if (options.paged) { target.searchParams.set("paged", "1"); target.searchParams.set("edition", "fun"); }
   if (options.after) target.searchParams.set("after", options.after);
   const url = target.toString();
   if (options.signal?.aborted) throw Error("Aborted");
@@ -47,7 +46,7 @@ export async function fetchFeed(
       aborted,
     ]);
     if (!response.ok) throw Error("Feed unavailable");
-    return parseFeedEnvelope(await Promise.race([response.json(), aborted]));
+    return parseFeedV2(await Promise.race([response.json(), aborted]));
   } finally {
     clearTimeout(timeout);
     if (rejectAbort)

@@ -30,7 +30,7 @@ test("waits for hydration before showing reader and changes language persistentl
   let finish!: (v: string | null) => void;
   let raw: string | null = null;
   const store = createAppStore({
-    getItem: () =>
+    getItem: (key) => key === "sachmuch.app.v1" ? Promise.resolve(null) :
       new Promise((r) => {
         finish = r;
       }),
@@ -68,7 +68,7 @@ test("storage read failure offers retry without rendering default reader", async
 test("unmount before hydration does not mount children", async () => {
   let finish!: (v: string | null) => void;
   const store = createAppStore({
-    getItem: () =>
+    getItem: (key) => key === "sachmuch.app.v1" ? Promise.resolve(null) :
       new Promise((r) => {
         finish = r;
       }),

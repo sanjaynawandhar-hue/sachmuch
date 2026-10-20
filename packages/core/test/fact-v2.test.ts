@@ -36,3 +36,10 @@ describe('language-flexible facts', () => {
   }
  });
 });
+it('upgrades legacy saved records without changing identity or inventing Hindi', async()=>{
+ const {upgradeLegacyFact} = await import('../src/fact-v2');
+ const legacy = {en:{id:'old-id',categoryId:1,categorySlug:'space',categoryLabel:'Space',categoryEmoji:'🪐',hook:en.hook,body:en.body,sourceUrl:'https://science.nasa.gov/venus/',publisher:'NASA',licence:'cc0',corroborationCount:1,difficulty:1,entities:[]}};
+ const upgraded=upgradeLegacyFact(legacy);
+ expect(upgraded.id).toBe('old-id');
+ expect(upgraded.texts).toEqual({en});
+});

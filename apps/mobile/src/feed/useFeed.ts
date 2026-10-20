@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { feedCache, type FeedCache } from "./cache";
-import type { BilingualMobileFact } from "@sachmuch/core";
+import type { FactV2 } from "@sachmuch/core";
 import { fetchFeed } from "./client";
 export function useFeed(origin: string, enabled = true, cache: FeedCache = feedCache) {
-  const [facts, setFacts] = useState<BilingualMobileFact[]>([]);
+  const [facts, setFacts] = useState<FactV2[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -77,8 +77,8 @@ export function useFeed(origin: string, enabled = true, cache: FeedCache = feedC
       cursor.current = page.nextCursor ?? null;
       setHasMore(!!cursor.current);
       setFacts((previous) => {
-        const ids = new Set(previous.map((f) => f.en.id));
-        return [...previous, ...page.facts.filter((f) => !ids.has(f.en.id))].slice(-600);
+        const ids = new Set(previous.map((f) => f.id));
+        return [...previous, ...page.facts.filter((f) => !ids.has(f.id))].slice(-600);
       });
       setError(null);
     } catch { if (id === generation.current) setError("unavailable"); }

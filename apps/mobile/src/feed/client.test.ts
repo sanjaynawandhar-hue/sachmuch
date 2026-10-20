@@ -1,9 +1,10 @@
+import {upgradeLegacyFact} from '@sachmuch/core';
 import { fetchFeed } from "./client";
 import { bilingual } from "../test/fixtures";
 const payload = {
-  version: 1,
+  version: 2, snapshotId: "test", totalEligible: 1, nextCursor: null,
   fetchedAt: "2026-10-14T00:00:00Z",
-  facts: [bilingual],
+  facts: [upgradeLegacyFact(bilingual)],
 };
 const original = global.fetch;
 afterEach(() => {
@@ -12,12 +13,12 @@ afterEach(() => {
 });
 test("fetches the public feed and preserves Hindi", async () => {
   global.fetch = jest.fn(async (url) => {
-    expect(url).toBe("https://example.org/api/feed");
+    expect(url).toBe("https://example.org/api/v2/feed");
     return { ok: true, json: async () => payload } as Response;
   });
   expect(
     (await fetchFeed("https://example.org", { development: false })).facts[0]
-      ?.hi?.hook,
+      ?.texts.hi?.hook,
   ).toBe("एक रोचक तथ्य");
 });
 test.each([
@@ -35,7 +36,7 @@ test("allows LAN HTTP only during development", async () => {
   );
   expect(
     (await fetchFeed("http://192.168.1.4:3000", { development: true })).version,
-  ).toBe(1);
+  ).toBe(2);
   await expect(
     fetchFeed("http://192.168.1.4:3000", { development: false }),
   ).rejects.toThrow();

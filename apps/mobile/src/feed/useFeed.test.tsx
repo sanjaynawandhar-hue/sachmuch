@@ -1,3 +1,4 @@
+import {upgradeLegacyFact} from '@sachmuch/core';
 import { renderHook, act, waitFor } from "@testing-library/react-native";
 import { useFeed } from "./useFeed";
 import { bilingual } from "../test/fixtures";
@@ -9,9 +10,9 @@ const response = (id: string) =>
   ({
     ok: true,
     json: async () => ({
-      version: 1,
+      version: 2, snapshotId: "test", totalEligible: 100,
       fetchedAt: "2026-10-14T00:00:00Z",
-      facts: [{ en: { ...bilingual.en, id } }],
+      facts: [upgradeLegacyFact({ en: { ...bilingual.en, id } })], nextCursor: null,
     }),
   }) as Response;
 test("newest refresh wins even if older request ignores cancellation", async () => {
@@ -22,9 +23,9 @@ test("newest refresh wins even if older request ignores cancellation", async () 
     result.current.refresh();
   });
   await act(() => resolvers[1]!(response("new")));
-  await waitFor(() => expect(result.current.facts[0]?.en.id).toBe("new"));
+  await waitFor(() => expect(result.current.facts[0]?.id).toBe("new"));
   await act(() => resolvers[0]!(response("old")));
-  expect(result.current.facts[0]?.en.id).toBe("new");
+  expect(result.current.facts[0]?.id).toBe("new");
 });
 test("refresh failure retains loaded facts and permits retry", async () => {
   let fail = false;
@@ -39,7 +40,7 @@ test("refresh failure retains loaded facts and permits retry", async () => {
     result.current.refresh();
   });
   await waitFor(() => expect(result.current.error).toBeTruthy());
-  expect(result.current.facts[0]?.en.id).toBe("one");
+  expect(result.current.facts[0]?.id).toBe("one");
   fail = false;
   await act(() => {
     result.current.refresh();
@@ -59,13 +60,13 @@ test("unmount cancels request", async () => {
 
 test("paged feed deduplicates, follows cursor and stops at the final page", async () => {
   const cursor = "00000000-0000-0000-0000-000000000001";
-  global.fetch = jest.fn().mockResolvedValueOnce({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual], nextCursor: cursor})}).mockResolvedValueOnce({ok: true, json: async () => ({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual, {en: {...bilingual.en, id: "second"}}], nextCursor: null})});
+  global.fetch = jest.fn().mockResolvedValueOnce({ok: true, json: async () => ({version: 2, snapshotId: "test", totalEligible: 100, fetchedAt: "2026-10-14T00:00:00Z", facts: [upgradeLegacyFact(bilingual)], nextCursor: cursor})}).mockResolvedValueOnce({ok: true, json: async () => ({version: 2, snapshotId: "test", totalEligible: 100, fetchedAt: "2026-10-14T00:00:00Z", facts: [upgradeLegacyFact(bilingual), upgradeLegacyFact({en: {...bilingual.en, id: "second"}})], nextCursor: null})});
   const {result} = await renderHook(() => useFeed("https://example.org"));
   await waitFor(() => expect(result.current.hasMore).toBe(true));
   await act(() => result.current.loadMore());
-  expect(result.current.facts.map((f) => f.en.id)).toEqual([bilingual.en.id, "second"]);
+  expect(result.current.facts.map((f) => f.id)).toEqual([bilingual.en.id, "second"]);
   expect(result.current.hasMore).toBe(false);
-  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/feed?paged=1&edition=fun&after=${cursor}`, expect.anything());
+  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/v2/feed?after=${cursor}`, expect.anything());
   await act(() => result.current.loadMore());
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });
@@ -76,21 +77,21 @@ test("a downloaded feed survives reopening while the network is unavailable", as
   const cache = {load: async () => saved, save: async (_origin: string, page: any) => { saved = page; }};
   global.fetch = jest.fn(async () => response("downloaded"));
   const first = await renderHook(() => useFeed("https://example.org", true, cache));
-  await waitFor(() => expect(first.result.current.facts[0]?.en.id).toBe("downloaded"));
+  await waitFor(() => expect(first.result.current.facts[0]?.id).toBe("downloaded"));
   await first.unmount();
   global.fetch = jest.fn(async () => { throw Error("Offline"); });
   const reopened = await renderHook(() => useFeed("https://example.org", true, cache));
   await waitFor(() => expect(reopened.result.current.error).toBe("unavailable"));
-  expect(reopened.result.current.facts[0]?.en.id).toBe("downloaded");
+  expect(reopened.result.current.facts[0]?.id).toBe("downloaded");
 });
 test("a slow cache read cannot replace a fresh server response", async () => {
   let release!: (value: any) => void;
   const cache = {load: () => new Promise<any>((resolve) => {release = resolve;}), save: async () => {}};
   global.fetch = jest.fn(async () => response("fresh"));
   const view = await renderHook(() => useFeed("https://example.org", true, cache));
-  await waitFor(() => expect(view.result.current.facts[0]?.en.id).toBe("fresh"));
-  await act(() => release({version: 1, fetchedAt: "2026-10-14T00:00:00Z", facts: [bilingual]}));
-  expect(view.result.current.facts[0]?.en.id).toBe("fresh");
+  await waitFor(() => expect(view.result.current.facts[0]?.id).toBe("fresh"));
+  await act(() => release({version: 2, snapshotId: "test", totalEligible: 100, fetchedAt: "2026-10-14T00:00:00Z", facts: [upgradeLegacyFact(bilingual)]}));
+  expect(view.result.current.facts[0]?.id).toBe("fresh");
 });
 
 test("returning to the app retries a failed connection", async () => {
@@ -101,7 +102,7 @@ test("returning to the app retries a failed connection", async () => {
   const view = await renderHook(() => useFeed("https://example.org"));
   await waitFor(() => expect(view.result.current.error).toBe("unavailable"));
   await act(() => change("active"));
-  await waitFor(() => expect(view.result.current.facts[0]?.en.id).toBe("reconnected"));
+  await waitFor(() => expect(view.result.current.facts[0]?.id).toBe("reconnected"));
   expect(view.result.current.error).toBeNull();
   await view.unmount();
   listener.mockRestore();

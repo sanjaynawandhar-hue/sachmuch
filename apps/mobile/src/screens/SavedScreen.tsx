@@ -1,3 +1,4 @@
+import {toDisplayFact} from '../feed/selection';
 import { isDiscoveryFact } from "@sachmuch/core";
 import React, { useState, useRef } from "react";
 import { FlatList, Pressable, Share, Text, View } from "react-native";
@@ -25,10 +26,10 @@ export function SavedScreen() {
   const [english, setEnglish] = useState(false);
   const [source, setSource] = useState<MobileFact | null>(null);
   const [error, setError] = useState<"save" | "action" | null>(null);
-  const visibleSaved = state.saved.filter(e => isDiscoveryFact(e.fact.en));
-  const entry = visibleSaved.find((e) => e.fact.en.id === id);
+  const visibleSaved = state.saved.filter(e => isDiscoveryFact(toDisplayFact(e.fact, 'en')));
+  const entry = visibleSaved.find((e) => e.fact.id === id);
   const lang = english ? "en" : state.preferences.language;
-  const fact = entry?.fact[lang];
+  const fact = entry ? toDisplayFact(entry.fact, lang) : undefined;
   async function remove() {
     if (!entry || removing.current) return;
     removing.current = true;
@@ -146,11 +147,11 @@ export function SavedScreen() {
               </Text>
               <FlatList
                 data={visibleSaved}
-                keyExtractor={(e) => e.fact.en.id}
+                keyExtractor={(e) => e.fact.id}
                 contentContainerStyle={{ gap: 14, paddingBottom: 20 }}
                 renderItem={({ item }) => {
                   const f =
-                    item.fact[state.preferences.language] ?? item.fact.en;
+                    toDisplayFact(item.fact, state.preferences.language);
                   return (
                     <Pressable
                       accessibilityRole="button"
@@ -196,7 +197,7 @@ export function SavedScreen() {
                           {f.hook}
                         </Text>
                         {state.preferences.language === "hi" &&
-                          !item.fact.hi && (
+                          !item.fact.texts.hi && (
                             <Text
                               style={{
                                 color: t.muted,

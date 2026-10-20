@@ -1,3 +1,4 @@
+import type {DisplayFact} from '../feed/selection';
 import React from "react";
 import { Image, ScrollView, Text, View } from "react-native";
 import type { MobileFact } from "@sachmuch/core";
@@ -19,7 +20,7 @@ export function FactReader({
 }: {
   expanded?: boolean;
   saving?: boolean;
-  fact: MobileFact;
+  fact: MobileFact & Partial<DisplayFact>;
   language: "en" | "hi";
   saved: boolean;
   loved?: boolean;
@@ -74,14 +75,16 @@ export function FactReader({
             </Text>
           </View>
         </View>
+        {(fact.displayLanguage && fact.displayLanguage !== language) && <Text style={{color:t.muted,fontSize:10}}>{fact.displayLanguage === 'hi' ? 'हिन्दी' : 'EN'}</Text>}
+        {fact.knowledgeKind && fact.knowledgeKind !== 'fact' && <Text style={{color:t.muted,fontSize:10}}>{fact.knowledgeKind === 'belief' ? (language === 'hi' ? 'धार्मिक मान्यता' : 'Religious belief') : (language === 'hi' ? 'लोककथा' : 'Folklore')}</Text>}
         <Text
           accessibilityRole="header"
           style={{
             color: t.ink,
             fontSize: 29,
             fontWeight: "600",
-            letterSpacing: language === "hi" ? 0 : -0.8,
-            lineHeight: language === "hi" ? 43 : 37,
+            letterSpacing: (fact.displayLanguage ?? language) === "hi" ? 0 : -0.8,
+            lineHeight: (fact.displayLanguage ?? language) === "hi" ? 43 : 37,
           }}
         >
           {fact.hook}
@@ -99,7 +102,7 @@ export function FactReader({
           style={{
             color: t.muted,
             fontSize: 17,
-            lineHeight: language === "hi" ? 30 : 28,
+            lineHeight: (fact.displayLanguage ?? language) === "hi" ? 30 : 28,
           }}
         >
           {fact.body}

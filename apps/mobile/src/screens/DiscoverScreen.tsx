@@ -16,11 +16,12 @@ import {
   balanceTopics,
   isDiscoveryFact,
   type BilingualMobileFact,
+  type FactV2,
   type MobileFact,
 } from "@sachmuch/core";
 import { useAppState } from "../state/AppStateProvider";
 import { useFeed } from "../feed/useFeed";
-import { resolveCurrentId, selectLanguageFacts } from "../feed/selection";
+import { asFactV2, toDisplayFact, resolveCurrentId, selectLanguageFacts } from "../feed/selection";
 import { useAppTheme } from "../theme";
 import { strings } from "../i18n";
 import { Action, Heading, Notice, Surface } from "../components/Surface";
@@ -45,17 +46,17 @@ export function DiscoverScreen({
   const s = strings(lang);
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
-  const data = previewFacts ?? feed.facts;
+  const data = useMemo(() => previewFacts ? previewFacts.map(asFactV2) : feed.facts, [previewFacts, feed.facts]);
   const affinity = useRef(state.affinity);
   affinity.current = state.affinity;
-  const orderCache = useRef<BilingualMobileFact[]>([]);
+  const orderCache = useRef<FactV2[]>([]);
   const ordered = useMemo(() => {
-    const current = new Map(data.map((f) => [f.en.id, f]));
-    const retained = orderCache.current.filter((f) => current.has(f.en.id)).map((f) => current.get(f.en.id)!);
-    const previous = new Set(retained.map((f) => f.en.id));
-    const fresh = data.filter((f) => !previous.has(f.en.id) && isDiscoveryFact(f.en));
-    const byId = new Map(fresh.map((f) => [f.en.id, f]));
-    const result = [...retained, ...balanceTopics(buildFeed(fresh.map((f) => f.en), affinity.current, fresh.length)).map((f) => byId.get(f.id)!)];
+    const current = new Map(data.map((f) => [f.id, f]));
+    const retained = orderCache.current.filter((f) => current.has(f.id)).map((f) => current.get(f.id)!);
+    const previous = new Set(retained.map((f) => f.id));
+    const fresh = data.filter((f) => !previous.has(f.id) && isDiscoveryFact(toDisplayFact(f, 'en')));
+    const byId = new Map(fresh.map((f) => [f.id, f]));
+    const result = [...retained, ...balanceTopics(buildFeed(fresh.map((f) => toDisplayFact(f, 'en')), affinity.current, fresh.length)).map((f) => byId.get(f.id)!)];
     orderCache.current = result;
     return result;
   }, [data]);
@@ -137,9 +138,9 @@ export function DiscoverScreen({
       }),
     [],
   );
-  async function save(target = fact) {
+  async function save(target: MobileFact | undefined = fact) {
     if (!target) return;
-    const original = data.find((f) => f.en.id === target.id);
+    const original = data.find((f) => f.id === target.id);
     if (!original) return;
     try {
       await toggleSaved(original);
@@ -148,11 +149,11 @@ export function DiscoverScreen({
       setNotice("save");
     }
   }
-  async function love(target = fact) {
+  async function love(target: MobileFact | undefined = fact) {
     if (!target) return;
     try { await toggleLoved(target.id); setNotice(null); } catch { setNotice("save"); }
   }
-  async function share(target = fact) {
+  async function share(target: MobileFact | undefined = fact) {
     if (!target) return;
     try {
       await Share.share({
@@ -317,7 +318,7 @@ export function DiscoverScreen({
                 language={lang}
                 loved={state.lovedIds.includes(fact.id)}
                 onLove={() => { void love(); }}
-                saved={state.saved.some((e) => e.fact.en.id === fact.id)}
+                saved={state.saved.some((e) => e.fact.id === fact.id)}
                 onSave={() => {
                   void save();
                 }}
@@ -334,7 +335,7 @@ export function DiscoverScreen({
               language={lang}
               lovedIds={state.lovedIds}
               onLove={(f) => { void love(f); }}
-              savedIds={state.saved.map((e) => e.fact.en.id)}
+              savedIds={state.saved.map((e) => e.fact.id)}
               onIndexChange={(next) => {
                 setCurrentId(facts[next]!.id);
                 setNotice(null);

@@ -1,8 +1,9 @@
 import {
   emptyAffinity,
-  parseBilingualFact,
+  parseFactV2,
+  upgradeLegacyFact,
   type Affinity,
-  type BilingualMobileFact,
+  type FactV2,
 } from "@sachmuch/core";
 export interface Preferences {
   language: "en" | "hi";
@@ -12,11 +13,11 @@ export interface Preferences {
   musicVolume: number;
 }
 export interface SavedFact {
-  fact: BilingualMobileFact;
+  fact: FactV2;
   savedAt: string;
 }
 export interface AppSnapshot {
-  version: 1;
+  version: 2;
   preferences: Preferences;
   saved: SavedFact[];
   lovedIds: string[];
@@ -26,9 +27,10 @@ export interface StorageAdapter {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
 }
-const KEY = "sachmuch.app.v1";
+const KEY = "sachmuch.app.v2";
+const LEGACY_KEY = "sachmuch.app.v1";
 const defaults = (): AppSnapshot => ({
-  version: 1,
+  version: 2,
   preferences: { language: "en", appearance: "system", haptics: true, music: true, musicVolume: 0.12 },
   saved: [],
   lovedIds: [],
@@ -42,7 +44,7 @@ function decode(raw: string | null): AppSnapshot {
   } catch {
     return defaults();
   }
-  if (p && p.version !== undefined && p.version !== 1)
+  if (p && p.version !== undefined && p.version !== 1 && p.version !== 2)
     throw Error(
       "Unsupported storage version. Your saved data has been preserved.",
     );
@@ -61,14 +63,14 @@ function decode(raw: string | null): AppSnapshot {
   const ids = new Set<string>();
   for (const entry of Array.isArray(p.saved) ? p.saved : []) {
     try {
-      const fact = parseBilingualFact(entry.fact);
+      const fact = p.version === 1 ? upgradeLegacyFact(entry.fact) : parseFactV2(entry.fact);
       if (
         typeof entry.savedAt !== "string" ||
         !Number.isFinite(Date.parse(entry.savedAt)) ||
-        ids.has(fact.en.id)
+        ids.has(fact.id)
       )
         continue;
-      ids.add(fact.en.id);
+      ids.add(fact.id);
       state.saved.push({ fact, savedAt: entry.savedAt });
     } catch {
       /* An invalid entry must not hide other saved facts. */
@@ -114,7 +116,8 @@ export function createAppStore(adapter: StorageAdapter) {
     if (!loading)
       loading = adapter
         .getItem(KEY)
-        .then((raw) => {
+        .then(async (raw) => {
+          if (raw === null) raw = await adapter.getItem(LEGACY_KEY);
           state = decode(raw);
           return state;
         })

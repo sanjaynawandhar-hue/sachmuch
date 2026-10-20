@@ -12,6 +12,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   learn,
   type BilingualMobileFact,
+  type FactV2,
+  upgradeLegacyFact,
   type FactSignal,
 } from "@sachmuch/core";
 import {
@@ -23,7 +25,7 @@ import {
 interface Value {
   state: AppSnapshot;
   setPreferences(patch: Partial<Preferences>): Promise<void>;
-  toggleSaved(fact: BilingualMobileFact): Promise<void>;
+  toggleSaved(fact: FactV2 | BilingualMobileFact): Promise<void>;
   toggleLoved(id: string): Promise<void>;
   recordSignal(signal: FactSignal): Promise<void>;
 }
@@ -70,12 +72,12 @@ export function AppStateProvider({
     [update],
   );
   const toggleSaved = useCallback(
-    (fact: BilingualMobileFact) =>
+    (fact: FactV2 | BilingualMobileFact) =>
       update((s) => ({
         ...s,
-        saved: s.saved.some((e) => e.fact.en.id === fact.en.id)
-          ? s.saved.filter((e) => e.fact.en.id !== fact.en.id)
-          : [{ fact, savedAt: new Date().toISOString() }, ...s.saved],
+        saved: s.saved.some((e) => e.fact.id === ('id' in fact ? fact.id : fact.en.id))
+          ? s.saved.filter((e) => e.fact.id !== ('id' in fact ? fact.id : fact.en.id))
+          : [{ fact: 'id' in fact ? fact : upgradeLegacyFact(fact), savedAt: new Date().toISOString() }, ...s.saved],
       })),
     [update],
   );

@@ -1,3 +1,4 @@
+import type {DisplayFact} from '../feed/selection';
 import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
@@ -27,7 +28,7 @@ export function FactPager({
   onShare,
   onSource,
 }: {
-  facts: MobileFact[];
+  facts: (MobileFact & Partial<DisplayFact>)[];
   index: number;
   language: "en" | "hi";
   savedIds: string[];
@@ -42,7 +43,7 @@ export function FactPager({
   const s = strings(language);
   const { height: windowHeight } = useWindowDimensions();
   const [height, setHeight] = useState(Math.max(240, windowHeight - 240));
-  const list = useRef<FlatList<MobileFact>>(null);
+  const list = useRef<FlatList<MobileFact & Partial<DisplayFact>>>(null);
   const settled = useRef(index);
   const previousFacts = useRef(facts);
   useEffect(() => {
@@ -125,15 +126,17 @@ export function FactPager({
                     {item.categoryEmoji}{" "}
                     {item.categoryLabel.toLocaleUpperCase(language)}
                   </Text>
+                  {(item.displayLanguage && item.displayLanguage !== language) && <Text style={{color:t.muted,fontSize:10}}>{item.displayLanguage === 'hi' ? 'हिन्दी' : 'EN'}</Text>}
+                  {item.knowledgeKind && item.knowledgeKind !== 'fact' && <Text style={{color:t.muted,fontSize:10}}>{item.knowledgeKind === 'belief' ? (language === 'hi' ? 'धार्मिक मान्यता' : 'Religious belief') : (language === 'hi' ? 'लोककथा' : 'Folklore')}</Text>}
                   <Text
                     accessibilityRole="header"
                     adjustsFontSizeToFit minimumFontScale={0.8}
                     style={{
                       color: t.ink,
                       fontSize: height < 480 ? 21 : 29,
-                      lineHeight: height < 480 ? 28 : language === "hi" ? 39 : 35,
+                      lineHeight: height < 480 ? 28 : (item.displayLanguage ?? language) === "hi" ? 39 : 35,
                       fontWeight: "600",
-                      letterSpacing: language === "hi" ? 0 : -0.7,
+                      letterSpacing: (item.displayLanguage ?? language) === "hi" ? 0 : -0.7,
                     }}
                   >
                     {item.hook}
@@ -155,7 +158,7 @@ export function FactPager({
                     style={{
                       color: t.muted,
                       fontSize: height < 480 ? 14 : 16,
-                      lineHeight: height < 480 ? 21 : language === "hi" ? 28 : 26,
+                      lineHeight: height < 480 ? 21 : (item.displayLanguage ?? language) === "hi" ? 28 : 26,
                       flexShrink: 1,
                     }}
                   >
