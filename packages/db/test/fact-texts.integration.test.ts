@@ -38,3 +38,40 @@ it('rejects empty text and unsupported language at the database boundary', async
  await expect(sql`UPDATE fact_texts SET hook='   ' WHERE language='en'`).rejects.toThrow();
  await expect(sql`UPDATE fact_texts SET language='fr' WHERE language='en'`).rejects.toThrow();
 });
+
+it('reads complete live variants and atomically dual-writes corrected text', async () => {
+ const {readFactV2,writeFactV2} = await import('../src/fact-v2-repository');
+ const id = '00000000-0000-4000-8000-000000000002';
+ const fact = await readFactV2(sql,id);
+ expect(fact?.texts.hi?.body).toBe('तथ्य');
+ expect(fact?.originalLanguage).toBe('en');
+ await writeFactV2(sql,{...fact!,texts:{en:{hook:'Corrected hook',body:'Corrected body'}}});
+ expect((await sql`SELECT hook_en,body_hi,hi_missing FROM facts WHERE id=${id}`)[0]).toEqual({hook_en:'Corrected hook',body_hi:null,hi_missing:true});
+ expect((await readFactV2(sql,id))?.texts.hi).toBeUndefined();
+});
+it('does not expose hidden facts or unapproved text',async()=>{
+ const {readFactV2} = await import('../src/fact-v2-repository');
+ const id='00000000-0000-4000-8000-000000000001';
+ await sql`UPDATE fact_texts SET review_state='pending' WHERE fact_id=${id}`;
+ expect(await readFactV2(sql,id)).toBeNull();
+ await sql`UPDATE facts SET status='hidden' WHERE id=${id}`;
+ expect(await readFactV2(sql,id)).toBeNull();
+});
+it('Hindi-only writes fail atomically until the compatibility migration',async()=>{
+ const {readFactV2,writeFactV2} = await import('../src/fact-v2-repository');
+ const id='00000000-0000-4000-8000-000000000002';
+ const fact=(await readFactV2(sql,id))!;
+ await expect(writeFactV2(sql,{...fact,originalLanguage:'hi',texts:{hi:{hook:'हुक',body:'तथ्य'}}})).rejects.toThrow();
+ expect((await readFactV2(sql,id))?.texts.en?.body).toBe('Corrected body');
+});
+it('publishes Hindi-only after compatibility migration and prevents losing its approved original',async()=>{
+ const {readFactV2,writeFactV2}=await import('../src/fact-v2-repository');
+ const id='00000000-0000-4000-8000-000000000002';
+ const fact=(await readFactV2(sql,id))!;
+ await sql.unsafe(await readFile(new URL('../rollout/enable-hindi-only.sql',import.meta.url),'utf8'));
+ await writeFactV2(sql,{...fact,originalLanguage:'hi',texts:{hi:{hook:'हुक',body:'तथ्य'}}});
+ expect((await readFactV2(sql,id))?.texts).toEqual({hi:{hook:'हुक',body:'तथ्य'}});
+ await expect(sql`DELETE FROM fact_texts WHERE fact_id=${id}`).rejects.toThrow();
+ await expect(sql`UPDATE fact_texts SET review_state='pending' WHERE fact_id=${id}`).rejects.toThrow();
+ expect((await sql`SELECT id FROM facts WHERE status='live' AND hook_en IS NOT NULL AND body_en IS NOT NULL`).map(r=>r.id)).not.toContain(id);
+});

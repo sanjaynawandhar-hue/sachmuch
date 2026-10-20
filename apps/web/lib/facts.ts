@@ -72,6 +72,7 @@ export async function getFeedFacts(limit = 300, page?: { after?: string }): Prom
          LIMIT 1
       ) img ON true
      WHERE f.status = 'live'
+       AND f.hook_en IS NOT NULL AND f.body_en IS NOT NULL
        AND c.slug NOT IN ('bollywood', 'hollywood', 'actors-actresses')
        ${page?.after ? sql`AND f.id > ${page.after}::uuid` : sql``}
      ORDER BY ${page ? sql`f.id` : sql`f.boost_count DESC, f.quality DESC, f.id`}

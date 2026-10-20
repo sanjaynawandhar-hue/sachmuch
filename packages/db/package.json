@@ -24,7 +24,8 @@
     "drizzle-orm": "^0.44.6",
     "postgres": "^3.4.7",
     "@sachmuch/ui": "workspace:*",
-    "@sachmuch/templates": "workspace:*"
+    "@sachmuch/templates": "workspace:*",
+    "@sachmuch/core": "workspace:*"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.5",

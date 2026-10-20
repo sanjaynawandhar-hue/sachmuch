@@ -6,3 +6,5 @@ export {
   categoryById, categoryBySlug, subtopicBySlug, subtopicQids,
 } from './taxonomy';
 export type { CategoryDef, SubtopicDef } from './taxonomy-types';
+
+export { readFactV2, writeFactV2 } from "./fact-v2-repository";
