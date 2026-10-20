@@ -17,7 +17,8 @@
     "push": "drizzle-kit push",
     "seed": "tsx src/seed.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.6",

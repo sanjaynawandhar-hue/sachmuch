@@ -233,6 +233,10 @@ export const facts = pgTable(
       .notNull()
       .references(() => sources.id),
 
+    originalLanguage: langCode('original_language').notNull().default('en'),
+    knowledgeKind: varchar('knowledge_kind', { length: 16 }).notNull().default('fact'),
+    asOf: timestamp('as_of', { withTimezone: true }),
+    batchId: varchar('batch_id', { length: 96 }),
     hookEn: text('hook_en').notNull(),
     bodyEn: text('body_en').notNull(),
     hookHi: text('hook_hi'),
@@ -293,6 +297,7 @@ export const facts = pgTable(
       sql`${t.hiMissing} OR (${t.hookHi} IS NOT NULL AND length(btrim(${t.hookHi})) > 0
            AND ${t.bodyHi} IS NOT NULL AND length(btrim(${t.bodyHi})) > 0)`,
     ),
+    check('facts_knowledge_kind', sql`${t.knowledgeKind} IN ('fact', 'belief', 'folklore')`),
     check('facts_difficulty_range', sql`${t.difficulty} BETWEEN 1 AND 5`),
     check('facts_quality_range', sql`${t.quality} BETWEEN 0 AND 1`),
     check('facts_hook_length', sql`length(${t.hookEn}) <= 150`),
@@ -697,3 +702,29 @@ export const offlinePacks = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.categoryId, t.lang] })],
 );
+
+/** Complete supported-language variants; identity remains on the canonical fact. */
+export const factTexts = pgTable('fact_texts', {
+  factId: uuid('fact_id').notNull().references(() => facts.id, {onDelete:'cascade'}),
+  language: langCode('language').notNull(),
+  hook: text('hook').notNull(),
+  body: text('body').notNull(),
+  reviewState: reviewVerdict('review_state').notNull().default('pending'),
+}, t => [
+  primaryKey({columns:[t.factId,t.language]}),
+  check('fact_texts_complete', sql`length(btrim(${t.hook})) > 0 AND length(btrim(${t.body})) > 0`),
+]);
+
+/** Evidence is retained independently of the chosen display language. */
+export const factEvidence = pgTable('fact_evidence', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  factId: uuid('fact_id').notNull().references(() => facts.id, {onDelete:'cascade'}),
+  sourceUrl: text('source_url').notNull(),
+  publisher: text('publisher').notNull(),
+  licence: licenceKind('licence').notNull(),
+  checkedAt: timestamp('checked_at', {withTimezone:true}),
+  sourceRecordKey: text('source_record_key').notNull(),
+}, t => [
+  uniqueIndex('fact_evidence_identity').on(t.factId,t.sourceUrl,t.sourceRecordKey),
+  check('fact_evidence_source', sql`${t.sourceUrl} ~ '^https?://' AND length(btrim(${t.publisher})) > 0`),
+]);
