@@ -9,3 +9,5 @@ export { STRINGS, STRING_KEYS, t } from './i18n';
 export type { StringKey, Lang } from './i18n';
 export * from './mobile-feed';
 export * from './editorial';
+
+export * from "./fact-v2";
