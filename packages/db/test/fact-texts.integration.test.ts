@@ -75,3 +75,14 @@ it('publishes Hindi-only after compatibility migration and prevents losing its a
  await expect(sql`UPDATE fact_texts SET review_state='pending' WHERE fact_id=${id}`).rejects.toThrow();
  expect((await sql`SELECT id FROM facts WHERE status='live' AND hook_en IS NOT NULL AND body_en IS NOT NULL`).map(r=>r.id)).not.toContain(id);
 });
+it('withdraws a cleared legacy translation from v2 readers',async()=>{
+ const {readFactV2}=await import('../src/fact-v2-repository');
+ const id='00000000-0000-4000-8000-000000000002';
+ await sql`UPDATE facts SET hook_en='Temporary translation',body_en='Temporary body' WHERE id=${id}`;
+ expect((await readFactV2(sql,id))?.texts.en).toBeTruthy();
+ await sql`UPDATE facts SET hook_en=NULL,body_en=NULL WHERE id=${id}`;
+ expect((await readFactV2(sql,id))?.texts.en).toBeUndefined();
+});
+it('cannot move the only original text away from a live fact',async()=>{
+ await expect(sql`UPDATE fact_texts SET fact_id='00000000-0000-4000-8000-000000000001' WHERE fact_id='00000000-0000-4000-8000-000000000002' AND language='hi'`).rejects.toThrow();
+});

@@ -134,3 +134,14 @@ test('legacy migration preserves original bytes and love IDs if v2 persistence f
  expect(data.get('sachmuch.app.v1')).toBe(legacy);
  expect(data.has('sachmuch.app.v2')).toBe(false);
 });
+test('empty optional metadata in an old bookmark survives migration and a later preference write',async()=>{
+ const old={...bilingual,en:{...bilingual.en,attributionText:'',templateId:''}};
+ const data=new Map([['sachmuch.app.v1',JSON.stringify({version:1,saved:[{fact:old,savedAt:'2026-10-14T00:00:00Z'}],lovedIds:['one']})]]);
+ const adapter={getItem:async(k:string)=>data.get(k)??null,setItem:async(k:string,v:string)=>{data.set(k,v);}};
+ const store=createAppStore(adapter);
+ await store.update(s=>({...s,preferences:{...s.preferences,language:'hi'}}));
+ const reloaded=await createAppStore(adapter).load();
+ expect(reloaded.saved.map(s=>s.fact.id)).toEqual(['one']);
+ expect(reloaded.lovedIds).toEqual(['one']);
+ expect(data.has('sachmuch.app.v1')).toBe(true);
+});

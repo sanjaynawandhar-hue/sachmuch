@@ -87,6 +87,6 @@ export function parseFeedV2(input: unknown): FeedV2 {
 
 export function upgradeLegacyFact(input:unknown):FactV2 {
  const {en,hi}=parseBilingualFact(input);
- return parseFactV2({...en,originalLanguage:'en',knowledgeKind:'fact',
+ return parseFactV2({...en,attributionText:en.attributionText?.trim() || undefined,templateId:en.templateId?.trim() || undefined,originalLanguage:'en',knowledgeKind:'fact',
   texts:{en:{hook:en.hook,body:en.body},...(hi?{hi:{hook:hi.hook,body:hi.body}}:{})}});
 }

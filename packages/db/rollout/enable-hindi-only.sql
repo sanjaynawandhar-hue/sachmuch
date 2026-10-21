@@ -14,11 +14,15 @@ BEGIN
   INSERT INTO fact_texts(fact_id,language,hook,body,review_state)
    VALUES(NEW.id,'en',NEW.hook_en,NEW.body_en,CASE WHEN NEW.status='live' THEN 'accepted'::review_verdict ELSE 'pending'::review_verdict END)
    ON CONFLICT(fact_id,language) DO UPDATE SET hook=excluded.hook,body=excluded.body,review_state=excluded.review_state;
+ ELSE
+  DELETE FROM fact_texts WHERE fact_id=NEW.id AND language='en';
  END IF;
  IF length(btrim(NEW.hook_hi))>0 AND length(btrim(NEW.body_hi))>0 THEN
   INSERT INTO fact_texts(fact_id,language,hook,body,review_state)
    VALUES(NEW.id,'hi',NEW.hook_hi,NEW.body_hi,CASE WHEN NEW.status='live' THEN 'accepted'::review_verdict ELSE 'pending'::review_verdict END)
    ON CONFLICT(fact_id,language) DO UPDATE SET hook=excluded.hook,body=excluded.body,review_state=excluded.review_state;
+ ELSE
+  DELETE FROM fact_texts WHERE fact_id=NEW.id AND language='hi';
  END IF;
  RETURN NEW;
 END;
@@ -52,3 +56,14 @@ DO $$ BEGIN
   RAISE EXCEPTION 'Backfill/review required before enabling Hindi-only publication';
  END IF;
 END $$;
+
+CREATE OR REPLACE FUNCTION preserve_fact_text_identity() RETURNS trigger AS $$
+BEGIN
+ IF NEW.fact_id<>OLD.fact_id THEN
+  RAISE EXCEPTION 'Text identity is immutable; create a reviewed variant for the other fact' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER texts_preserve_identity BEFORE UPDATE OF fact_id ON fact_texts
+ FOR EACH ROW EXECUTE FUNCTION preserve_fact_text_identity();

@@ -43,3 +43,8 @@ it('upgrades legacy saved records without changing identity or inventing Hindi',
  expect(upgraded.id).toBe('old-id');
  expect(upgraded.texts).toEqual({en});
 });
+it('preserves valid legacy bookmarks with empty optional metadata',async()=>{
+ const {upgradeLegacyFact}=await import('../src/fact-v2');
+ const old={en:{id:'saved',categoryId:1,categorySlug:'space',categoryLabel:'Space',categoryEmoji:'✦',hook:en.hook,body:en.body,sourceUrl:'https://example.org',publisher:'Example',licence:'cc0',corroborationCount:1,difficulty:1,entities:[],attributionText:'',templateId:''}};
+ expect(upgradeLegacyFact(old).id).toBe('saved');
+});
