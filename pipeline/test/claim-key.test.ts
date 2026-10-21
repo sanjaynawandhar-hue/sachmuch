@@ -23,3 +23,13 @@ it('normalizes date precision without inventing missing month/day',()=>{
  expect(canonicalClaimKey(claim)).not.toBe(canonicalClaimKey({...claim,object:{kind:'date',value:'2020'}}));
  expect(()=>canonicalClaimKey({...claim,object:{kind:'date',value:'2020-02-30'}})).toThrow();
 });
+it('rejects inherited object properties as unit names',()=>{
+ for(const unit of ['toString','constructor','__proto__'])
+  expect(()=>canonicalClaimKey({...base,object:{...base.object,unit}})).toThrow('Unsupported quantity unit');
+});
+it('sorts qualifiers after normalizing their keys',()=>{
+ expect(canonicalClaimKey({...base,qualifiers:{' z':'last',a:'first'}})).toBe(canonicalClaimKey({...base,qualifiers:{a:'first',z:'last'}}));
+});
+it('rejects ambiguous qualifiers that normalize to the same key',()=>{
+ expect(()=>canonicalClaimKey({...base,qualifiers:{a:'one',' a ':'two'}})).toThrow('Duplicate qualifier');
+});

@@ -267,6 +267,9 @@ export const facts = pgTable(
 
     /** Dedupe: exact match on the normalised hash, then pg_trgm within a category. */
     normalizedHash: varchar('normalized_hash', { length: 64 }).notNull(),
+    canonicalClaimKey: varchar('canonical_claim_key', {length:64}),
+    canonicalClaim: jsonb('canonical_claim'),
+    corpusEligible: boolean('corpus_eligible').notNull().default(false),
     searchEn: tsvector('search_en'),
     searchHi: tsvector('search_hi'),
 
@@ -302,6 +305,7 @@ export const facts = pgTable(
     check('facts_quality_range', sql`${t.quality} BETWEEN 0 AND 1`),
     check('facts_hook_length', sql`length(${t.hookEn}) <= 150`),
     uniqueIndex('facts_hash_uq').on(t.normalizedHash),
+    uniqueIndex('facts_claim_key_uq').on(t.canonicalClaimKey),
     index('facts_feed_idx').on(t.status, t.categoryId, t.quality),
     /* The Hindi feed reads through this partial index and structurally cannot see hi_missing rows. */
     index('facts_hindi_feed_idx').on(t.categoryId, t.quality).where(sql`${t.status} = 'live' AND NOT ${t.hiMissing}`),
@@ -724,6 +728,7 @@ export const factEvidence = pgTable('fact_evidence', {
   licence: licenceKind('licence').notNull(),
   checkedAt: timestamp('checked_at', {withTimezone:true}),
   sourceRecordKey: text('source_record_key').notNull(),
+  reference: text('reference'),
 }, t => [
   uniqueIndex('fact_evidence_identity').on(t.factId,t.sourceUrl,t.sourceRecordKey),
   check('fact_evidence_source', sql`${t.sourceUrl} ~ '^https?://' AND length(btrim(${t.publisher})) > 0`),

@@ -244,6 +244,9 @@ importers:
       '@sachmuch/connectors':
         specifier: workspace:*
         version: link:../connectors
+      '@sachmuch/core':
+        specifier: workspace:*
+        version: link:../packages/core
       '@sachmuch/db':
         specifier: workspace:*
         version: link:../packages/db

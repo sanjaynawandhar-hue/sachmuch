@@ -45,13 +45,16 @@ export function canonicalClaimKey(claim:CanonicalClaim):string {
   case 'text': object={kind:'text',value:text(claim.object.value)};break;
   case 'date': object={kind:'date',value:date(claim.object.value)};break;
   case 'quantity': {
-   const conversion=UNITS[claim.object.unit??''];
+   const unit=claim.object.unit??'';
+   const conversion=Object.hasOwn(UNITS,unit)?UNITS[unit]:undefined;
    if(!conversion) throw Error('Unsupported quantity unit; review required');
    object={kind:'quantity',value:quantity(claim.object.value,conversion[1]),unit:conversion[0]};break;
   }
   default: throw Error('Unsupported claim object');
  }
- const qualifiers=Object.fromEntries(Object.entries(claim.qualifiers).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([k,v])=>[text(k),text(v)]));
+ const normalizedQualifiers=Object.entries(claim.qualifiers).map(([k,v])=>[text(k),text(v)] as const).sort(([a],[b])=>a<b?-1:a>b?1:0);
+ if(new Set(normalizedQualifiers.map(([key])=>key)).size!==normalizedQualifiers.length) throw Error('Duplicate qualifier after normalization');
+ const qualifiers=Object.fromEntries(normalizedQualifiers);
  const canonical={subject:entity(claim.subject),predicate:entity(claim.predicate),object,qualifiers,...(claim.timeScope?{timeScope:date(claim.timeScope)}:{})};
  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 }

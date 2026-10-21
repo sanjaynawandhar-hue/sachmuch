@@ -86,3 +86,17 @@ it('withdraws a cleared legacy translation from v2 readers',async()=>{
 it('cannot move the only original text away from a live fact',async()=>{
  await expect(sql`UPDATE fact_texts SET fact_id='00000000-0000-4000-8000-000000000001' WHERE fact_id='00000000-0000-4000-8000-000000000002' AND language='hi'`).rejects.toThrow();
 });
+it('stores one canonical claim with two evidence records across different source renderings',async()=>{
+ const {persistCandidateV2}=await import('../../../pipeline/src/persist-v2');
+ await sql.unsafe(await readFile(new URL('../migrations/0003_canonical_claims.sql',import.meta.url),'utf8'));
+ const candidate={claim:{subject:'Q313',predicate:'P2048',object:{kind:'quantity' as const,value:'1000',unit:'m'},qualifiers:{}},fact:{id:'00000000-0000-4000-8000-000000000004',originalLanguage:'en' as const,texts:{en:{hook:'A tested measurement',body:'This isolated fixture is not a production fact.'}},categoryId:1,categorySlug:'space',categoryLabel:'Space',categoryEmoji:'✦',sourceUrl:'https://example.org/first',publisher:'Example',licence:'cc0' as const,knowledgeKind:'fact' as const},evidence:[{url:'https://example.org/first',publisher:'Example',sourceRecordKey:'first',checkedAt:'2026-10-21T00:00:00Z',licence:'cc0' as const,reference:'Isolated measurement fixture'}],sourceVersion:'fixture-1',batchId:'test-batch'};
+ const first=await persistCandidateV2(sql,candidate,'test');
+ expect(first.inserted).toBe(true);
+ await sql`UPDATE facts SET status='live' WHERE id=${first.id}`;
+ const second=await persistCandidateV2(sql,{...candidate,fact:{...candidate.fact,id:'00000000-0000-4000-8000-000000000005',sourceUrl:'https://example.org/second'},claim:{...candidate.claim,object:{kind:'quantity',value:'1',unit:'km'}},evidence:[{...candidate.evidence[0]!,url:'https://example.org/second',sourceRecordKey:'second'}]},'test');
+ expect(second).toEqual({id:first.id,inserted:false});
+ expect((await sql`SELECT id FROM facts WHERE canonical_claim_key IS NOT NULL AND status='live'`)).toHaveLength(1);
+ expect((await sql`SELECT id FROM fact_evidence WHERE fact_id=${first.id}`)).toHaveLength(2);
+ await persistCandidateV2(sql,candidate,'test');
+ expect((await sql`SELECT id FROM fact_evidence WHERE fact_id=${first.id}`)).toHaveLength(2);
+});
