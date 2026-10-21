@@ -9,9 +9,9 @@ it('paginates editorial facts through the same UUID cursor without repeating the
  expect(first).toHaveLength(5);
  expect(first.every(f => f.hi && f.en.sourceUrl.startsWith('https://'))).toBe(true);
  const second = await getFeedFacts(100, {after:first[4]!.en.id});
- expect(second).toHaveLength(15);
+ expect(second).toHaveLength(95);
  expect(second.every(f => f.en.id > first[4]!.en.id)).toBe(true);
- expect(new Set([...first,...second].map(f=>f.en.id)).size).toBe(20);
+ expect(new Set([...first,...second].map(f=>f.en.id)).size).toBe(100);
  const last = await getFeedFacts(5, {after:second.at(-1)!.en.id});
  expect(last).toHaveLength(0);
 });

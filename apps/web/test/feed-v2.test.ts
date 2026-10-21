@@ -5,9 +5,9 @@ import {parseFeedV2} from '@sachmuch/core';
 it('serves the real curated count as v2 without changing legacy clients', async () => {
  const response = await GET(new Request('https://example.com/api/v2/feed'));
  const body = parseFeedV2(await response.json());
- expect(body.facts).toHaveLength(20);
- expect(body.totalEligible).toBe(20);
- expect(body.snapshotId).toBe('curated-v2');
+ expect(body.facts).toHaveLength(100);
+ expect(body.totalEligible).toBe(100);
+ expect(body.snapshotId).toBe('curated-2026-10-21-100');
  expect(body.nextCursor).toBeNull();
  expect(body.facts[0]?.texts.en?.body).toBeTruthy();
  const old = await legacy(new Request('https://example.com/api/feed?paged=1&edition=fun'));

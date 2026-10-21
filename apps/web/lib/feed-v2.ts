@@ -9,5 +9,5 @@ export function curatedFeedV2(): FeedV2 {
   ...(en.attributionText?{attributionText:en.attributionText}:{}), knowledgeKind:'fact',
   ...(en.quality!==undefined?{quality:en.quality}:{}), ...(en.templateId?{templateId:en.templateId}:{})
  }));
- return parseFeedV2({version:2,fetchedAt:new Date().toISOString(),facts,nextCursor:null,snapshotId:'curated-v2',totalEligible:facts.length});
+ return parseFeedV2({version:2,fetchedAt:new Date().toISOString(),facts,nextCursor:null,snapshotId:'curated-2026-10-21-100',totalEligible:facts.length});
 }

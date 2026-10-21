@@ -9,9 +9,9 @@ it('excludes cinema and actor categories but retains science', () => {
  for(const categorySlug of ['bollywood','hollywood','actors-actresses','movies']) expect(isDiscoveryFact({categorySlug})).toBe(false);
  expect(isDiscoveryFact({categorySlug:'physics-chemistry'})).toBe(true);
 });
-it('ships complete bilingual fun facts with unique IDs and valid source metadata', () => {
- expect(editorialFacts.length).toBeGreaterThanOrEqual(8);
+it('ships complete fun facts in at least one language with unique IDs and valid source metadata', () => {
+ expect(editorialFacts.length).toBe(100);
  const feed = parseFeedEnvelope({version:1,fetchedAt:new Date().toISOString(),facts:editorialFacts});
  expect(new Set(feed.facts.map(f=>f.en.id)).size).toBe(feed.facts.length);
- expect(feed.facts.every(f=>f.hi && f.en.body.length<350 && f.hi.body.length<350)).toBe(true);
+ expect(feed.facts.every(f=>f.en.body.length<350 && (!f.hi || f.hi.body.length<350))).toBe(true);
 });

@@ -1,3 +1,4 @@
+import { editorialExpansion } from './editorial-expansion';
 import type { BilingualMobileFact } from './mobile-feed';
 
 export function isDiscoveryFact(fact: { categorySlug: string }): boolean {
@@ -39,8 +40,10 @@ const entries: [number, string, string, string, string, string, string, string, 
 [16, "technology-internet", "Famous wonders", "मशहूर अजूबे", "Lady Liberty was not always green", "The Statue of Liberty’s copper surface gradually formed a green patina through natural chemical reactions. The familiar colour is not green paint.", "स्टैच्यू ऑफ़ लिबर्टी हमेशा हरी नहीं थी", "उसकी ताँबे की सतह पर प्राकृतिक रासायनिक क्रियाओं से धीरे-धीरे हरी परत बनी। उसका जाना-पहचाना हरा रंग पेंट नहीं है।", "https://home.nps.gov/stli/planyourvisit/frequently-asked-questions-statue-of-liberty.htm"],
 [16, "technology-internet", "Famous wonders", "मशहूर अजूबे", "A giant statue with a thin skin", "The Statue of Liberty’s copper skin is only about 2.4 millimetres thick—roughly the thickness of two US pennies stacked together.", "विशाल मूर्ति की पतली परत", "स्टैच्यू ऑफ़ लिबर्टी की ताँबे की बाहरी परत केवल लगभग 2.4 मिलीमीटर मोटी है—करीब दो अमेरिकी पेनी सिक्कों की कुल मोटाई जितनी।", "https://home.nps.gov/stli/planyourvisit/frequently-asked-questions-statue-of-liberty.htm"]
 ];
-export const editorialFacts: BilingualMobileFact[] = entries.map(([categoryId,categorySlug,categoryLabel,hiLabel,hook,body,hiHook,hiBody,sourceUrl],index) => {
+const originalEditorialFacts: BilingualMobileFact[] = entries.map(([categoryId,categorySlug,categoryLabel,hiLabel,hook,body,hiHook,hiBody,sourceUrl],index) => {
  const publisher = sourceUrl.includes('nasa') ? 'NASA' : sourceUrl.includes('noaa') ? 'NOAA' : sourceUrl.includes('si.edu') ? 'Smithsonian' : sourceUrl.includes('kew.org') ? 'Royal Botanic Gardens, Kew' : sourceUrl.includes('gatech.edu') ? 'Georgia Tech' : sourceUrl.includes('ncsu.edu') ? 'NC State University' : sourceUrl.includes('wsu.edu') ? 'Washington State University' : sourceUrl.includes('toureiffel.paris') ? 'The Eiffel Tower' : sourceUrl.includes('nps.gov') ? 'US National Park Service' : 'The Popcorn Board';
  const en = {id:`00002026-1018-4000-8000-${String(index+1).padStart(12,'0')}`,categoryId,categorySlug,categoryLabel,categoryEmoji:({13:'🪐',14:'🐙',15:'✨',16:'💡'} as Record<number,string>)[categoryId]!,hook,body,sourceUrl,publisher,licence:'cc0' as const,corroborationCount:1,difficulty:1,entities:[],quality:0.9,templateId:`editorial-${index+1}`};
  return {en,hi:{...en,categoryLabel:hiLabel,hook:hiHook,body:hiBody}};
 });
+
+export const editorialFacts: BilingualMobileFact[] = [...originalEditorialFacts, ...editorialExpansion];
