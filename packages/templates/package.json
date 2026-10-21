@@ -5,7 +5,20 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts", "./library": "./src/library/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "devDependencies": { "typescript": "^5.9.2", "vitest": "^3.2.4", "tsx": "^4.20.3" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./library": "./src/library/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "tsx": "^4.20.3"
+  },
+  "dependencies": {
+    "@sachmuch/core": "workspace:*"
+  }
 }

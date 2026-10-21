@@ -199,6 +199,10 @@ importers:
         version: 3.2.7(@types/node@22.20.1)(jsdom@20.0.3)(lightningcss@1.33.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
 
   packages/templates:
+    dependencies:
+      '@sachmuch/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       tsx:
         specifier: ^4.20.3
