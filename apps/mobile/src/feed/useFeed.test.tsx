@@ -66,7 +66,7 @@ test("paged feed deduplicates, follows cursor and stops at the final page", asyn
   await act(() => result.current.loadMore());
   expect(result.current.facts.map((f) => f.id)).toEqual([bilingual.en.id, "second"]);
   expect(result.current.hasMore).toBe(false);
-  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/v2/feed?after=${cursor}`, expect.anything());
+  expect(global.fetch).toHaveBeenLastCalledWith(`https://example.org/api/v2/feed?paged=1&after=${cursor}`, expect.anything());
   await act(() => result.current.loadMore());
   expect(global.fetch).toHaveBeenCalledTimes(2);
 });
@@ -92,6 +92,30 @@ test("a slow cache read cannot replace a fresh server response", async () => {
   await waitFor(() => expect(view.result.current.facts[0]?.id).toBe("fresh"));
   await act(() => release({version: 2, snapshotId: "test", totalEligible: 100, fetchedAt: "2026-10-14T00:00:00Z", facts: [upgradeLegacyFact(bilingual)]}));
   expect(view.result.current.facts[0]?.id).toBe("fresh");
+});
+
+test('expired snapshot retains downloaded facts and stops paging until refresh',async()=>{
+ global.fetch=jest.fn().mockResolvedValueOnce({ok:true,json:async()=>({...await response('kept').json(),nextCursor:'old-cursor'})}).mockResolvedValueOnce({ok:false,status:409,json:async()=>({error:{code:'REFRESH_REQUIRED'}})});
+ const {result}=await renderHook(()=>useFeed('https://example.org'));
+ await waitFor(()=>expect(result.current.hasMore).toBe(true));
+ await act(()=>result.current.loadMore());
+ expect(result.current.facts[0]?.id).toBe('kept');
+ expect(result.current.error).toBe('refresh_required');
+ expect(result.current.hasMore).toBe(false);
+});
+
+test("later downloaded pages survive reopening offline",async()=>{
+ let saved:any=null;
+ const cache={load:async()=>saved,save:async(_origin:string,page:any)=>{saved=page;}};
+ global.fetch=jest.fn().mockResolvedValueOnce({ok:true,json:async()=>({...await response('first').json(),nextCursor:'next'})}).mockResolvedValueOnce(response('later'));
+ const first=await renderHook(()=>useFeed('https://example.org',true,cache));
+ await waitFor(()=>expect(first.result.current.hasMore).toBe(true));
+ await act(()=>first.result.current.loadMore());
+ await first.unmount();
+ global.fetch=jest.fn(async()=>{throw Error('Offline');});
+ const reopened=await renderHook(()=>useFeed('https://example.org',true,cache));
+ await waitFor(()=>expect(reopened.result.current.error).toBe('unavailable'));
+ expect(reopened.result.current.facts.map(f=>f.id)).toEqual(['first','later']);
 });
 
 test("returning to the app retries a failed connection", async () => {

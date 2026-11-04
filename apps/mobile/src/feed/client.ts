@@ -20,11 +20,13 @@ function feedUrl(origin: string, development: boolean): string {
     throw Error("Invalid API origin");
   return new URL("/api/v2/feed", u).toString();
 }
+export class FeedRefreshRequired extends Error { constructor(){super('REFRESH_REQUIRED');} }
 export async function fetchFeed(
   origin: string,
   options: { signal?: AbortSignal; development: boolean; paged?: boolean; after?: string },
 ): Promise<FeedV2> {
   const target = new URL(feedUrl(origin, options.development));
+  if (options.paged) target.searchParams.set("paged", "1");
   if (options.after) target.searchParams.set("after", options.after);
   const url = target.toString();
   if (options.signal?.aborted) throw Error("Aborted");
@@ -45,6 +47,7 @@ export async function fetchFeed(
       }),
       aborted,
     ]);
+    if (response.status === 409) throw new FeedRefreshRequired();
     if (!response.ok) throw Error("Feed unavailable");
     return parseFeedV2(await Promise.race([response.json(), aborted]));
   } finally {

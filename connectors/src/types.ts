@@ -1,4 +1,4 @@
-import type { FactDraft } from '@sachmuch/templates';
+import type { FactDraft, CandidateV2 } from '@sachmuch/templates';
 
 export type ConnectorKind = 'sparql' | 'rest' | 'dump' | 'rss';
 
@@ -62,3 +62,7 @@ export class SourceError extends Error {
     this.name = 'SourceError';
   }
 }
+
+/** V2 acquisition yields draft candidates only; publishers are separate. */
+export type CandidatePage={candidates:CandidateV2[];nextCursor:string|null;sourceVersion:string;requests:number;bytes:number};
+export type CandidateConnector={id:string;fetch(cursor:string|null,limit:number,signal:AbortSignal):Promise<CandidatePage>};

@@ -8,3 +8,4 @@ export {
 export type { CategoryDef, SubtopicDef } from './taxonomy-types';
 
 export { readFactV2, writeFactV2 } from "./fact-v2-repository";
+export {buildFeedSnapshot,readSnapshotWindow} from './feed-snapshot';

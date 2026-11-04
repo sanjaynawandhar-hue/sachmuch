@@ -2,6 +2,11 @@ import type {Sql} from 'postgres';
 import {parseFactV2, type FactV2} from '@sachmuch/core';
 
 export async function readFactV2(sql:Sql,id:string):Promise<FactV2|null> {
+ return (await readFactsV2(sql,[id]))[0]??null;
+}
+export async function readFactsV2(sql:Sql,ids:string[]):Promise<FactV2[]> {
+ if(!ids.length)return [];
+ if(ids.length>50)throw Error('Fact read exceeds page limit');
  const rows = await sql`
   SELECT f.id, f.original_language, f.category_id, c.slug, c.name_en, c.emoji,
    f.source_url, f.publisher, f.licence, f.attribution_text, f.knowledge_kind,
@@ -9,17 +14,19 @@ export async function readFactV2(sql:Sql,id:string):Promise<FactV2|null> {
    (SELECT jsonb_object_agg(t.language,jsonb_build_object('hook',t.hook,'body',t.body))
      FROM fact_texts t WHERE t.fact_id=f.id AND t.review_state='accepted') AS texts
   FROM facts f JOIN categories c ON c.id=f.category_id JOIN sources s ON s.id=f.source_id
-  WHERE f.id=${id}::uuid AND f.status='live' AND c.enabled AND s.enabled
+  WHERE f.id=ANY(${ids}::uuid[]) AND f.status='live' AND c.enabled AND s.enabled
    AND (f.valid_until IS NULL OR f.valid_until > now())`;
- const r=rows[0];
- if (!r || !r.texts?.[r.original_language]) return null;
- return parseFactV2({id:r.id,originalLanguage:r.original_language,texts:r.texts,
+ return rows.flatMap(r=>{
+ const texts=typeof r.texts==='string'?JSON.parse(r.texts):r.texts;
+ if(!texts?.[r.original_language])return [];
+ return [parseFactV2({id:r.id,originalLanguage:r.original_language,texts,
   categoryId:r.category_id,categorySlug:r.slug,categoryLabel:r.name_en,categoryEmoji:r.emoji,
   sourceUrl:r.source_url,publisher:r.publisher,licence:r.licence,knowledgeKind:r.knowledge_kind,
   ...(r.attribution_text?{attributionText:r.attribution_text}:{}),
   ...(r.template_id?{templateId:r.template_id}:{}),quality:r.quality,
   ...(r.as_of?{asOf:new Date(r.as_of).toISOString()}:{}),
   ...(r.valid_until?{validUntil:new Date(r.valid_until).toISOString()}:{}),
+ })];
  });
 }
 

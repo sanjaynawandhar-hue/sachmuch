@@ -733,3 +733,28 @@ export const factEvidence = pgTable('fact_evidence', {
   uniqueIndex('fact_evidence_identity').on(t.factId,t.sourceUrl,t.sourceRecordKey),
   check('fact_evidence_source', sql`${t.sourceUrl} ~ '^https?://' AND length(btrim(${t.publisher})) > 0`),
 ]);
+
+/** A fetched page is durable before processing; item progress commits with each draft. */
+export const corpusBatches = pgTable('corpus_batches', {
+ id: text('id').primaryKey(),
+ sourceId: varchar('source_id',{length:64}).notNull().references(()=>sources.id),
+ sourceVersion: text('source_version'),
+ cursor: text('cursor'),
+ pendingPage: jsonb('pending_page'),
+ processingIndex: integer('processing_index').notNull().default(0),
+ complete: boolean('complete').notNull().default(false),
+ retryAfter: timestamp('retry_after',{withTimezone:true}),
+ updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[check('corpus_batch_index_nonnegative',sql`${t.processingIndex} >= 0`)]);
+
+export const feedSnapshots=pgTable('feed_snapshots',{
+ id:uuid('id').primaryKey(),
+ active:boolean('active').notNull().default(false),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+ totalEligible:integer('total_eligible').notNull(),
+},t=>[uniqueIndex('one_active_feed_snapshot').on(t.active).where(sql`${t.active}=true`)]);
+export const feedEntries=pgTable('feed_entries',{
+ snapshotId:uuid('snapshot_id').notNull().references(()=>feedSnapshots.id,{onDelete:'cascade'}),
+ position:integer('position').notNull(),
+ factId:uuid('fact_id').notNull().references(()=>facts.id),
+},t=>[primaryKey({columns:[t.snapshotId,t.position]}),uniqueIndex('feed_snapshot_fact').on(t.snapshotId,t.factId)]);

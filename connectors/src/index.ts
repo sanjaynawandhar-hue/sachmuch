@@ -7,3 +7,4 @@ export { runSparql, paged, assertPageable, stripSparqlComments, WDQS_PAGE_SIZE }
 export { createWorldBankConnector, warmCountryIndex } from './sources/world-bank/index';
 export type { WorldBankDeps, RankedRow } from './sources/world-bank/index';
 export { countryIndex, resetCountryIndex } from './sources/world-bank/countries';
+export { createManifestConnector } from './sources/editorial-manifest/index';

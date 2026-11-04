@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       budgetMinutes:
-        description: 'Minutes to spend claiming jobs'
+        description: 'Whole minutes to spend claiming jobs (1–50)'
         required: false
         default: '45'
 

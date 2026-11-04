@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, it, expect } from 'vitest';
-import postgres from 'postgres';
+import {createDb} from '../src/client';
 import { readFile } from 'node:fs/promises';
 import * as repository from '../src/fact-texts';
 
@@ -8,7 +8,7 @@ const url = process.env.TEST_DATABASE_URL;
 if (!url) throw Error('TEST_DATABASE_URL is required');
 const target = new URL(url);
 if (!['localhost','127.0.0.1','[::1]'].includes(target.hostname) || !/^\/sachmuch_test_[a-z0-9_]+$/.test(target.pathname)) throw Error('Use an isolated local sachmuch_test_ database');
-const sql = postgres(url, {max:1,onnotice:()=>{}});
+const {sql} = createDb(url);
 beforeAll(async () => {
  await sql.unsafe('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
  await sql.unsafe(await readFile(new URL('../migrations/0000_init.sql', import.meta.url), 'utf8'));
@@ -100,3 +100,105 @@ it('stores one canonical claim with two evidence records across different source
  await persistCandidateV2(sql,candidate,'test');
  expect((await sql`SELECT id FROM fact_evidence WHERE fact_id=${first.id}`)).toHaveLength(2);
 });
+it('resumes a bounded batch midway through a fetched page without losing or duplicating claims',async()=>{
+ const {runImportBatch}=await import('../../../pipeline/src/batches');
+ const {RateLimited}=await import('../../../connectors/src/types');
+ await sql.unsafe(await readFile(new URL('../migrations/0004_soft_khan.sql',import.meta.url),'utf8'));
+
+ let throttled=true;
+ const connector={id:'test',async fetch(cursor:string|null){
+  if(cursor==='page2'&&throttled) throw new RateLimited(1,'test');
+  return {candidates:cursor===null?[makeBatchFixture(1),makeBatchFixture(2)]:[makeBatchFixture(3)],nextCursor:cursor===null?'page2':null,sourceVersion:'fixture-v1',requests:1,bytes:100};
+ }};
+ const opts={batchId:'resume-test',sourceId:'test',maxRecords:1,maxDurationMs:1000,dryRun:false};
+ const first=await runImportBatch(opts,{sql,connector});
+ expect(first.reviewPending).toBe(1);
+ const second=await runImportBatch({...opts,maxRecords:10},{sql,connector});
+ expect(second.reviewPending).toBe(1);
+ expect(second.deferred).toBe(1);
+ throttled=false;
+ const third=await runImportBatch({...opts,maxRecords:10},{sql,connector});
+ expect(third.reviewPending).toBe(1);
+ expect(third.complete).toBe(true);
+ expect((await runImportBatch(opts,{sql,connector})).candidates).toBe(0);
+ expect((await sql`SELECT id FROM facts WHERE batch_id='resume-test'`)).toHaveLength(3);
+ expect((await sql`SELECT id FROM facts WHERE batch_id='resume-test' AND status='live'`)).toHaveLength(0);
+});
+it('refuses an unbounded or mismatched batch before contacting a source',async()=>{
+ const {runImportBatch}=await import('../../../pipeline/src/batches');
+ const connector={id:'test',async fetch(){throw Error('must not fetch');}};
+ await expect(runImportBatch({batchId:'bad',sourceId:'test',maxRecords:1001,maxDurationMs:100,dryRun:false},{sql,connector})).rejects.toThrow('Batch limits');
+});
+
+const makeBatchFixture=(n:number,batchId="resume-test")=>({claim:{subject:`batch-subject-${n}`,predicate:'observed',object:{kind:'text' as const,value:'test'},qualifiers:{}},fact:{id:`00000000-0000-4000-9000-${String(n).padStart(12,'0')}`,originalLanguage:'en' as const,texts:{en:{hook:'A complete test fixture',body:'This isolated fixture must never be published in the real app.'}},categoryId:1,categorySlug:'space',categoryLabel:'Space',categoryEmoji:'✦',sourceUrl:'https://example.org/evidence',publisher:'Example',licence:'cc0' as const,knowledgeKind:'fact' as const},evidence:[{url:'https://example.org/evidence',publisher:'Example',sourceRecordKey:String(n),checkedAt:'2026-10-21T00:00:00Z',licence:'cc0' as const,reference:'test evidence'}],sourceVersion:'fixture-v1',batchId});
+it('dry-run previews candidates without creating a batch or facts',async()=>{
+ const {runImportBatch}=await import('../../../pipeline/src/batches');
+ const candidate=makeBatchFixture(10,'dry-test');
+ const connector={id:'test',async fetch(){return {candidates:[candidate,candidate],nextCursor:null,sourceVersion:'fixture-v1',requests:1,bytes:200};}};
+ const report=await runImportBatch({batchId:'dry-test',sourceId:'test',maxRecords:10,maxDurationMs:1000,dryRun:true},{sql,connector});
+ expect(report).toMatchObject({reviewPending:1,duplicates:1,accepted:0,complete:true});
+ expect(await sql`SELECT id FROM corpus_batches WHERE id='dry-test'`).toHaveLength(0);
+ expect(await sql`SELECT id FROM facts WHERE batch_id='dry-test'`).toHaveLength(0);
+});
+it('keeps acquired pages but starts no processing after the duration budget',async()=>{
+ const {runImportBatch}=await import('../../../pipeline/src/batches');
+ let time=0;
+ const connector={id:'test',async fetch(){time=200;return {candidates:[makeBatchFixture(11,'time-test')],nextCursor:null,sourceVersion:'fixture-v1',requests:1,bytes:100};}};
+ const report=await runImportBatch({batchId:'time-test',sourceId:'test',maxRecords:10,maxDurationMs:100,dryRun:false},{sql,connector,now:()=>time});
+ expect(report.candidates).toBe(0);
+ expect((await sql`SELECT pending_page FROM corpus_batches WHERE id='time-test'`)[0]!.pending_page).toBeTruthy();
+});
+it('rolls back a draft if its processing checkpoint fails, then retries exactly once',async()=>{
+ const {runImportBatch}=await import('../../../pipeline/src/batches');
+ const connector={id:'test',async fetch(){return {candidates:[makeBatchFixture(12,'crash-test')],nextCursor:null,sourceVersion:'fixture-v1',requests:1,bytes:100};}};
+ const opts={batchId:'crash-test',sourceId:'test',maxRecords:10,maxDurationMs:1000,dryRun:false};
+ await sql.unsafe(`CREATE FUNCTION simulate_checkpoint_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='crash-test' AND NEW.processing_index=1 THEN RAISE EXCEPTION 'simulated checkpoint failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_checkpoint BEFORE UPDATE ON corpus_batches FOR EACH ROW EXECUTE FUNCTION simulate_checkpoint_failure()`);
+ await expect(runImportBatch(opts,{sql,connector})).rejects.toThrow('simulated checkpoint failure');
+ expect(await sql`SELECT id FROM facts WHERE batch_id='crash-test'`).toHaveLength(0);
+ await sql`DROP TRIGGER fail_checkpoint ON corpus_batches`;
+ expect((await runImportBatch(opts,{sql,connector})).reviewPending).toBe(1);
+ expect((await runImportBatch(opts,{sql,connector})).candidates).toBe(0);
+});
+it('publishes an immutable snapshot and reads only live approved originals across pages',async()=>{
+ const {buildFeedSnapshot,readSnapshotWindow}=await import('../src/feed-snapshot');
+ await sql.unsafe(await readFile(new URL('../migrations/0005_nebulous_power_pack.sql',import.meta.url),'utf8'));
+ const snapshot=await buildFeedSnapshot(sql,{seed:'fixture',batchSize:50});
+ expect(snapshot.totalEligible).toBe(0);
+ await sql`UPDATE facts SET corpus_eligible=true WHERE id='00000000-0000-4000-8000-000000000004'`;
+ const next=await buildFeedSnapshot(sql,{seed:'fixture',batchSize:50});
+ expect(next.totalEligible).toBe(1);
+ expect((await readSnapshotWindow(sql,next.snapshotId,0)).facts).toHaveLength(1);
+ expect((await readSnapshotWindow(sql,snapshot.snapshotId,0)).facts).toHaveLength(0);
+ await sql`UPDATE facts SET status='hidden' WHERE id='00000000-0000-4000-8000-000000000004'`;
+ const revoked=await readSnapshotWindow(sql,next.snapshotId,0);
+ expect(revoked.facts).toHaveLength(0);
+ expect(revoked.totalEligible).toBe(0);
+ expect(revoked.position).toBe(1);
+});
+it('keeps 100000 synthetic claims reachable exactly once and advances past a revoked page',async()=>{
+ const {buildFeedSnapshot,readSnapshotWindow}=await import('../src/feed-snapshot');
+ for(let offset=0;offset<100000;offset+=1000){
+ await sql.unsafe(`INSERT INTO facts(id,category_id,source_id,hook_en,body_en,source_url,publisher,licence,status,normalized_hash,canonical_claim_key,corpus_eligible)
+ SELECT ('10000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,1,'test','Synthetic scale fixture','Synthetic test content: never import this into production.','https://example.org/fixture','Fixture','cc0','draft','scale-'||n,'scale-'||n,true FROM generate_series(${offset+1},${offset+1000})n`);
+ }
+ for(let offset=0;offset<100000;offset+=1000){
+ await sql`UPDATE facts SET status='live' WHERE id IN (SELECT id FROM facts WHERE normalized_hash LIKE 'scale-%' ORDER BY id LIMIT 1000 OFFSET ${offset})`;
+ }
+ const snapshot=await buildFeedSnapshot(sql,{seed:'scale',batchSize:500});
+ expect(snapshot.totalEligible).toBe(100000);
+ const positions=await sql`SELECT count(*)::integer AS total,count(DISTINCT fact_id)::integer AS unique,min(position) AS first,max(position) AS last FROM feed_entries WHERE snapshot_id=${snapshot.snapshotId}`;
+ expect(positions[0]).toEqual({total:100000,unique:100000,first:1,last:100000});
+ const first=await readSnapshotWindow(sql,snapshot.snapshotId,0);
+ expect(first.facts).toHaveLength(50);
+ expect(first.position).toBe(50);
+ await sql`UPDATE facts SET status='hidden' WHERE id IN (SELECT fact_id FROM feed_entries WHERE snapshot_id=${snapshot.snapshotId} AND position BETWEEN 51 AND 100)`;
+ const empty=await readSnapshotWindow(sql,snapshot.snapshotId,50);
+ expect(empty.facts).toHaveLength(0);
+ expect(empty.position).toBe(100);
+ expect(empty.hasMore).toBe(true);
+ expect(empty.totalEligible).toBe(99950);
+ expect((await readSnapshotWindow(sql,snapshot.snapshotId,100)).facts).toHaveLength(50);
+ const final=await readSnapshotWindow(sql,snapshot.snapshotId,99950);
+ expect(final.facts).toHaveLength(50);
+ expect(final.hasMore).toBe(false);
+},180000);

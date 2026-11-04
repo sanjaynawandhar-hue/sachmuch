@@ -6,6 +6,7 @@
  *
  * Run: DATABASE_URL=... pnpm --filter @sachmuch/pipeline start
  */
+import { ingestBudgetMs } from './budget';
 import { createDb } from '@sachmuch/db';
 import { TEMPLATES } from '@sachmuch/templates/library';
 import { warmCountryIndex } from '@sachmuch/connectors';
@@ -15,7 +16,7 @@ import { disableFailingTemplates, persistDrafts, sweepStaleFacts, type PersistSt
 
 // Kept in minutes because that is how the workflow input reads, and how a
 // 60-minute Actions timeout is reasoned about.
-const BUDGET_MS = Number(process.env.INGEST_BUDGET_MINUTES ?? 45) * 60_000;
+const BUDGET_MS = ingestBudgetMs(process.env.INGEST_BUDGET_MINUTES);
 const RUNNER_ID = process.env.GITHUB_RUN_ID ?? `local-${process.pid}`;
 
 const { db, sql } = createDb();

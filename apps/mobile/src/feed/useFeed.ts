@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { feedCache, type FeedCache } from "./cache";
 import type { FactV2 } from "@sachmuch/core";
-import { fetchFeed } from "./client";
+import { fetchFeed, FeedRefreshRequired } from "./client";
 export function useFeed(origin: string, enabled = true, cache: FeedCache = feedCache) {
   const [facts, setFacts] = useState<FactV2[]>([]);
+  const currentFacts = useRef<FactV2[]>([]);
+  currentFacts.current = facts;
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -63,7 +65,7 @@ export function useFeed(origin: string, enabled = true, cache: FeedCache = feedC
   useEffect(() => {
     if (!enabled) return;
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active" && latestError.current) refresh();
+      if (state === "active" && latestError.current && latestError.current !== "refresh_required") refresh();
     });
     return () => subscription.remove();
   }, [enabled, refresh]);
@@ -76,13 +78,18 @@ export function useFeed(origin: string, enabled = true, cache: FeedCache = feedC
       if (id !== generation.current) return;
       cursor.current = page.nextCursor ?? null;
       setHasMore(!!cursor.current);
-      setFacts((previous) => {
-        const ids = new Set(previous.map((f) => f.id));
-        return [...previous, ...page.facts.filter((f) => !ids.has(f.id))].slice(-600);
-      });
+      const ids = new Set(currentFacts.current.map((f) => f.id));
+      const merged = [...currentFacts.current, ...page.facts.filter((f) => !ids.has(f.id))].slice(-600);
+      currentFacts.current = merged;
+      setFacts(merged);
+      // Cache envelope is bounded to 300; the in-memory reading window is 600.
+      void cache.save(origin, {...page, facts: merged.slice(-300)}).catch(() => {});
       setError(null);
-    } catch { if (id === generation.current) setError("unavailable"); }
+    } catch (error) { if (id === generation.current) {
+      if(error instanceof FeedRefreshRequired){cursor.current=null;setHasMore(false);setError("refresh_required");}
+      else setError("unavailable");
+    } }
     finally { if (id === generation.current) busy.current = false; }
-  }, [origin, enabled]);
+  }, [origin, enabled, cache]);
   return { facts, status, error, refresh, hasMore, loadMore };
 }
