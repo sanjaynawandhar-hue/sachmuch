@@ -7,7 +7,7 @@ export async function readSnapshotPage(sql:Sql,after?:string):Promise<FeedV2>{
  if(cursor&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.snapshotId))throw new FeedCursorError('REFRESH_REQUIRED');
  try{
   const page=await readSnapshotWindow(sql,cursor?.snapshotId,cursor?.position??0);
-  return parseFeedV2({version:2,fetchedAt:new Date().toISOString(),facts:page.facts,snapshotId:page.snapshotId,totalEligible:page.totalEligible,
+  return parseFeedV2({version:2,fetchedAt:new Date().toISOString(),facts:page.facts,snapshotId:page.snapshotId,totalEligible:page.totalEligible,totalEligibleAsOf:page.totalEligibleAsOf,
    nextCursor:page.hasMore?encodeFeedCursor({snapshotId:page.snapshotId,position:page.position}):null});
  }catch(error){
   if(error instanceof Error&&(error.message==='INVALID_CURSOR'||error.message==='REFRESH_REQUIRED'))throw new FeedCursorError(error.message);

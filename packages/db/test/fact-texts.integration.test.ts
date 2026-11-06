@@ -12,12 +12,17 @@ const {sql} = createDb(url);
 beforeAll(async () => {
  await sql.unsafe('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
  await sql.unsafe(await readFile(new URL('../migrations/0000_init.sql', import.meta.url), 'utf8'));
- await sql.unsafe(await readFile(new URL('../migrations/0002_fact_texts.sql', import.meta.url), 'utf8'));
+
  await sql`INSERT INTO categories (id,slug,name_en,name_hi,position,tint_bg,tint_surface,tint_accent,tint_dark_bg,tint_dark_surface,tint_dark_accent,emoji) VALUES (1,'space','Space','अंतरिक्ष',1,'#000','#000','#000','#000','#000','#000','🪐')`;
  await sql`INSERT INTO sources (id,name,publisher,homepage,kind,licence,attribution_required,rate_limit_rpm,schedule) VALUES ('test','Test','NASA','https://science.nasa.gov','rest','cc0',false,1,'manual')`;
  for (const [id, hookHi, bodyHi] of [['00000000-0000-4000-8000-000000000001',null,null],['00000000-0000-4000-8000-000000000002','हुक','तथ्य'],['00000000-0000-4000-8000-000000000003','अधूरा',null]] as const) {
   await sql`INSERT INTO facts(id,category_id,source_id,hook_en,body_en,hook_hi,body_hi,source_url,publisher,licence,status,normalized_hash) VALUES (${id},1,'test','English hook','English body',${hookHi},${bodyHi},'https://science.nasa.gov','NASA','cc0','live',${id})`;
  }
+ const {migrateCorpus}=await import('../src/corpus-migrations');
+ expect((await migrateCorpus(sql)).applied).toHaveLength(4);
+ expect((await migrateCorpus(sql)).applied).toHaveLength(0);
+ const backup=(await sql`SELECT jsonb_array_length(facts) AS count FROM corpus_rollout_backups`)[0];
+ expect(backup?.count).toBe(3);
 });
 afterAll(async () => { await sql.end(); });
 it('backfills complete texts once, preserves IDs and flags partial Hindi', async () => {
@@ -88,7 +93,6 @@ it('cannot move the only original text away from a live fact',async()=>{
 });
 it('stores one canonical claim with two evidence records across different source renderings',async()=>{
  const {persistCandidateV2}=await import('../../../pipeline/src/persist-v2');
- await sql.unsafe(await readFile(new URL('../migrations/0003_canonical_claims.sql',import.meta.url),'utf8'));
  const candidate={claim:{subject:'Q313',predicate:'P2048',object:{kind:'quantity' as const,value:'1000',unit:'m'},qualifiers:{}},fact:{id:'00000000-0000-4000-8000-000000000004',originalLanguage:'en' as const,texts:{en:{hook:'A tested measurement',body:'This isolated fixture is not a production fact.'}},categoryId:1,categorySlug:'space',categoryLabel:'Space',categoryEmoji:'✦',sourceUrl:'https://example.org/first',publisher:'Example',licence:'cc0' as const,knowledgeKind:'fact' as const},evidence:[{url:'https://example.org/first',publisher:'Example',sourceRecordKey:'first',checkedAt:'2026-10-21T00:00:00Z',licence:'cc0' as const,reference:'Isolated measurement fixture'}],sourceVersion:'fixture-1',batchId:'test-batch'};
  const first=await persistCandidateV2(sql,candidate,'test');
  expect(first.inserted).toBe(true);
@@ -103,7 +107,6 @@ it('stores one canonical claim with two evidence records across different source
 it('resumes a bounded batch midway through a fetched page without losing or duplicating claims',async()=>{
  const {runImportBatch}=await import('../../../pipeline/src/batches');
  const {RateLimited}=await import('../../../connectors/src/types');
- await sql.unsafe(await readFile(new URL('../migrations/0004_soft_khan.sql',import.meta.url),'utf8'));
 
  let throttled=true;
  const connector={id:'test',async fetch(cursor:string|null){
@@ -161,7 +164,6 @@ it('rolls back a draft if its processing checkpoint fails, then retries exactly 
 });
 it('publishes an immutable snapshot and reads only live approved originals across pages',async()=>{
  const {buildFeedSnapshot,readSnapshotWindow}=await import('../src/feed-snapshot');
- await sql.unsafe(await readFile(new URL('../migrations/0005_nebulous_power_pack.sql',import.meta.url),'utf8'));
  const snapshot=await buildFeedSnapshot(sql,{seed:'fixture',batchSize:50});
  expect(snapshot.totalEligible).toBe(0);
  await sql`UPDATE facts SET corpus_eligible=true WHERE id='00000000-0000-4000-8000-000000000004'`;
@@ -172,7 +174,8 @@ it('publishes an immutable snapshot and reads only live approved originals acros
  await sql`UPDATE facts SET status='hidden' WHERE id='00000000-0000-4000-8000-000000000004'`;
  const revoked=await readSnapshotWindow(sql,next.snapshotId,0);
  expect(revoked.facts).toHaveLength(0);
- expect(revoked.totalEligible).toBe(0);
+ expect(revoked.totalEligible).toBe(1); // Count remains accurate as of its disclosed cache timestamp.
+ expect(revoked.totalEligibleAsOf).toBeTruthy();
  expect(revoked.position).toBe(1);
 });
 it('keeps 100000 synthetic claims reachable exactly once and advances past a revoked page',async()=>{
@@ -196,9 +199,20 @@ it('keeps 100000 synthetic claims reachable exactly once and advances past a rev
  expect(empty.facts).toHaveLength(0);
  expect(empty.position).toBe(100);
  expect(empty.hasMore).toBe(true);
- expect(empty.totalEligible).toBe(99950);
+ expect(empty.totalEligible).toBe(100000); // Revoked cards are omitted immediately; count refreshes within30s.
  expect((await readSnapshotWindow(sql,snapshot.snapshotId,100)).facts).toHaveLength(50);
  const final=await readSnapshotWindow(sql,snapshot.snapshotId,99950);
  expect(final.facts).toHaveLength(50);
  expect(final.hasMore).toBe(false);
+ const seen=new Set<string>();
+ let position=0,pages=0;
+ do {
+  const page=await readSnapshotWindow(sql,snapshot.snapshotId,position);
+  for(const fact of page.facts){expect(seen.has(fact.id)).toBe(false);seen.add(fact.id);}
+  expect(page.position).toBeGreaterThan(position);
+  position=page.position;pages++;
+  if(!page.hasMore)break;
+ }while(pages<=2000);
+ expect(pages).toBe(2000);
+ expect(seen.size).toBe(99950);
 },180000);

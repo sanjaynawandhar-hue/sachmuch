@@ -345,9 +345,18 @@ describe('engagement learning', () => {
         a = learn(a, sig({ categoryId: 4, dwellMs: 9000, liked: true }));
         a = learn(a, sig({ categoryId: 5, dwellMs: 100 }));
       }
-      const feed = buildFeed(pool, a, 60);
-      const liked = feed.filter((f) => f.categoryId === 4).length;
-      const skipped = feed.filter((f) => f.categoryId === 5).length;
+      // Preference is a distributional bias, not a guarantee for every random page.
+      let liked = 0, skipped = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        let state = seed;
+        const random = () => {
+          state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+          return state / 4294967296;
+        };
+        const feed = buildFeed(pool, a, 60, random);
+        liked += feed.filter((f) => f.categoryId === 4).length;
+        skipped += feed.filter((f) => f.categoryId === 5).length;
+      }
       expect(liked).toBeGreaterThan(skipped);
     });
 

@@ -31,6 +31,8 @@ describe('language-flexible facts', () => {
  it('validates envelopes and counts without requiring English', () => {
   const feed = { version: 2, fetchedAt: '2026-10-21T00:00:00Z', facts: [fact], nextCursor: null, snapshotId: 'snapshot-1', totalEligible: 100001 };
   expect(api.parseFeedV2(feed).facts[0].texts.hi).toEqual(hi);
+  expect(api.parseFeedV2({...feed,totalEligibleAsOf:'2026-10-20T23:59:50Z'}).totalEligibleAsOf).toBe('2026-10-20T23:59:50Z');
+  expect(()=>api.parseFeedV2({...feed,totalEligibleAsOf:'bad'})).toThrow();
   for (const patch of [{version:1}, {facts:[fact,fact]}, {totalEligible:-1}, {totalEligible:0}, {nextCursor:1}, {snapshotId:''}, {fetchedAt:'bad'}, {nextCursor:'x'.repeat(513)}]) {
    expect(() => api.parseFeedV2({...feed,...patch})).toThrow();
   }

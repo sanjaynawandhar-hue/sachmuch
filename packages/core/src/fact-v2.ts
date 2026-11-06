@@ -27,6 +27,7 @@ export type FeedV2 = {
   nextCursor: string | null;
   snapshotId: string;
   totalEligible: number;
+  totalEligibleAsOf?: string;
 };
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -76,13 +77,13 @@ export function selectFactText(fact: FactV2, preferred: Language): {language: La
 }
 
 export function parseFeedV2(input: unknown): FeedV2 {
-  if (!record(input) || input.version !== 2 || !date(input.fetchedAt) || !input.fetchedAt.includes('T') ||
+  if (!record(input) || (input.totalEligibleAsOf!==undefined&&!date(input.totalEligibleAsOf)) || input.version !== 2 || !date(input.fetchedAt) || !input.fetchedAt.includes('T') ||
       !Array.isArray(input.facts) || input.facts.length > 300 || !nonempty(input.snapshotId) ||
       !Number.isSafeInteger(input.totalEligible) || (input.totalEligible as number) < input.facts.length ||
       (input.nextCursor !== null && (!nonempty(input.nextCursor) || input.nextCursor.length > 512))) throw Error('Invalid feed');
   const facts = input.facts.map(parseFactV2);
   if (new Set(facts.map(f => f.id)).size !== facts.length) throw Error('Duplicate fact');
-  return {version: 2, fetchedAt: input.fetchedAt, facts, nextCursor: input.nextCursor as string | null, snapshotId: input.snapshotId, totalEligible: input.totalEligible as number};
+  return {version: 2, fetchedAt: input.fetchedAt, facts, nextCursor: input.nextCursor as string | null, snapshotId: input.snapshotId, totalEligible: input.totalEligible as number,...(input.totalEligibleAsOf?{totalEligibleAsOf:input.totalEligibleAsOf as string}:{})};
 }
 
 export function upgradeLegacyFact(input:unknown):FactV2 {
