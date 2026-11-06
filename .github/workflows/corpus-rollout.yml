@@ -1,0 +1,33 @@
+name: Corpus additive schema rollout
+on:
+  push:
+    tags: ['corpus-schema-v*']
+permissions:
+  contents: read
+concurrency:
+  group: corpus-schema-rollout
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - name: Back up and add corpus schema atomically
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter @sachmuch/pipeline exec tsx src/migrate-corpus.ts
+      - name: Verify production inventory after migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm --filter @sachmuch/pipeline exec tsx src/corpus-diagnostics.ts
